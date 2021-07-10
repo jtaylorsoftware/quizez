@@ -1,47 +1,28 @@
 import { createServer, Server as HttpServer } from 'http'
+import { Session } from 'session'
+import { Join, CreateNew, AddQuestion } from 'session/event'
 import { Server } from 'socket.io'
 import {
-  SessionCreated,
-  SessionCreatedArgs,
-  SessionJoin,
-  SessionJoinArgs,
-  SessionJoinFailed,
-  SessionJoinSuccess,
-  SessionStart,
-} from 'session/event'
-import { Session } from 'session'
-
-const debug = require('debug')('server')
+  addUserToSession,
+  createSession,
+  addQuestionToSession,
+} from './handlers'
 
 // All created Sessions
 const sessions: Session[] = []
+
+const debug = require('debug')('server')
 
 // Sets up the socket.io server event handlers
 function configure(io: Server) {
   io.on('connection', (socket) => {
     debug('received socket connection')
 
-    socket.on(SessionStart, () => {
-      const session = new Session(socket.id)
-      debug(`client starting session with id ${session.id}`)
-      const args: SessionCreatedArgs = {
-        id: session.id,
-      }
-      sessions.push(session)
-      socket.emit(SessionCreated, args)
-    })
+    socket.on(CreateNew, createSession(socket, sessions))
 
-    socket.on(SessionJoin, (args: SessionJoinArgs) => {
-      debug(`client joining session ${args.id} with name ${args.name}`)
-      const sessionIndex = sessions.findIndex(
-        (session) => session.id === args.id
-      )
-      if (sessionIndex === -1) {
-        socket.emit(SessionJoinFailed)
-      } else {
-        socket.emit(SessionJoinSuccess)
-      }
-    })
+    socket.on(Join, addUserToSession(socket, sessions))
+
+    socket.on(AddQuestion, addQuestionToSession(socket, sessions))
   })
 }
 

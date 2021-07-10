@@ -3,19 +3,24 @@
  */
 
 import assert from 'assert'
-import { io } from 'socket.io-client'
+import { io, Socket } from 'socket.io-client'
 import {
-  SessionStart,
-  SessionJoin,
-  SessionCreated,
-  SessionCreatedArgs,
-  SessionJoinSuccess,
-  SessionJoinArgs,
-  SessionJoinFailed,
+  CreateNew,
+  Join,
+  Created,
+  CreatedArgs,
+  JoinSuccess,
+  JoinArgs,
+  JoinFailed,
+  AddQuestion,
+  QuestionAdded,
+  QuestionAddedArgs,
 } from 'session/event'
+import { MultipleChoiceFormat, Question } from 'session'
 assert(process.argv.length == 3)
 
 let sessionId: string | undefined
+let sessionOwner: Socket
 
 // Waits for and returns the created Session's id
 async function getSessionId(): Promise<string> {
@@ -40,24 +45,27 @@ async function getSessionId(): Promise<string> {
   })
 }
 
-{
+// Testing creating Session
+;(async () => {
   console.log('Starting client to create session')
 
   const socket = io(`http://localhost:${process.argv[2]}`)
 
   socket.on('connect', () => {
     console.log(`connected with id ${socket.id}`)
-    socket.emit(SessionStart)
+    sessionOwner = socket
+    socket.emit(CreateNew)
   })
 
-  socket.on(SessionCreated, (args: SessionCreatedArgs) => {
+  socket.on(Created, (args: CreatedArgs) => {
     console.log(`created session with id ${args.id} `)
     sessionId = args.id
   })
 
   socket.connect()
-}
+})()
 
+// Testing joining Session
 ;(async () => {
   console.log('Starting client to join session')
 
@@ -67,24 +75,48 @@ async function getSessionId(): Promise<string> {
     console.log(`connected with id ${socket.id}`)
   })
 
-  socket.on(SessionJoinSuccess, () => {
+  socket.on(JoinSuccess, () => {
     console.log(`joined session ${sessionId}`)
   })
 
-  socket.on(SessionJoinFailed, () => {
+  socket.on(JoinFailed, () => {
     console.log(`failed to join session ${sessionId}`)
+  })
+
+  socket.on(QuestionAdded, (args: QuestionAddedArgs) => {
+    console.log(`question added to Session`)
+    console.log(args)
   })
 
   socket.connect()
 
   try {
+    // Wait to join session
     const id = await getSessionId()
-    const args: SessionJoinArgs = {
+    const args: JoinArgs = {
       id,
       name: 'user',
     }
-    socket.emit(SessionJoin, args)
+    socket.emit(Join, args)
+
+    // After user joins session, have owner add question
+    sessionOwner!.emit(
+      AddQuestion,
+      new Question('First Question', {
+        type: MultipleChoiceFormat,
+        choices: [
+          {
+            text: 'First Answer',
+            isCorrect: false,
+          },
+          {
+            text: 'Second Answer',
+            isCorrect: true,
+          },
+        ],
+      })
+    )
   } catch (e) {
-    console.log(`could not get session id`)
+    console.log('could not get session id')
   }
 })()
