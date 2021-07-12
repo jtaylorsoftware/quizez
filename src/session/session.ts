@@ -8,7 +8,7 @@ const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)
 export class Session {
   readonly id: string = nanoid()
   readonly quiz: Quiz = new Quiz()
-  private users: string[] = []
+  private users: User[] = []
 
   private _isStarted: boolean = false
   public get isStarted(): boolean {
@@ -19,10 +19,29 @@ export class Session {
 
   /**
    * Adds a user to the Session
-   * @param id Socket id of the user joining
+   * @param user User joining
+   * @returns true if user is added successfully
    */
-  addUser(id: string) {
-    this.users.push(id)
+  addUser(user: User): boolean {
+    if (user.id === this.owner) {
+      return false
+    }
+    this.users.push(user)
+    return true
+  }
+
+  /**
+   * Removes a user from the Session
+   * @param name Name of the user to remove
+   * @returns true if user is removed successfully
+   */
+  removeUser(name: string): boolean {
+    const index = this.users.findIndex((user) => user.name === name)
+    if (index === -1) {
+      return false
+    }
+    this.users.splice(index, 1)
+    return true
   }
 
   /**
@@ -32,6 +51,10 @@ export class Session {
   start() {
     this._isStarted = true
   }
+}
+
+export class User {
+  constructor(readonly name: string, readonly id: string) {}
 }
 
 /**

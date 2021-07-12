@@ -1,14 +1,19 @@
-import { Question, Session } from 'session'
+import { Question, Session, User } from 'session'
 import {
   AddQuestionArgs,
   AddQuestionFailed,
   AddQuestionSuccess,
-  Created,
-  CreatedArgs,
-  JoinArgs,
-  JoinFailed,
-  JoinSuccess,
-  QuestionAdded,
+  CreatedSession,
+  CreatedSessionResponse,
+  JoinSessionArgs,
+  JoinSessionFailed,
+  JoinSessionSuccess,
+  SessionKickArgs,
+  SessionKickFailed,
+  SessionKickSuccess,
+  SessionKickSuccessResponse,
+  SessionStartArgs,
+  SessionStarted,
 } from 'session/event'
 import { Socket } from 'socket.io'
 
@@ -27,33 +32,40 @@ export function createSession(
 ): SocketEventHandler<void> {
   return () => {
     const session = new Session(socket.id)
-    debug(`client starting session with id ${session.id}`)
-    const args: CreatedArgs = {
+    debug(`client creating session with id ${session.id}`)
+    const res: CreatedSessionResponse = {
       id: session.id,
     }
     sessions.push(session)
-    socket.emit(Created, args)
+    socket.join(session.id)
+    socket.emit(CreatedSession, res)
   }
 }
 
 /**
- * Adds a client socket to a Session, if it exists
+ * Adds a client socket to a Session, if it exists, and if the
+ * client id is not the owner
  * @param socket Client socket joining the Session
  * @param sessions List of created Sessions
  */
 export function addUserToSession(
   socket: Socket,
   sessions: Session[]
-): SocketEventHandler<JoinArgs> {
-  return (args: JoinArgs) => {
+): SocketEventHandler<JoinSessionArgs> {
+  return (args: JoinSessionArgs) => {
     debug(`client joining session ${args.id} with name ${args.name}`)
     const session = sessions.find((session) => session.id === args.id)
     if (session == null) {
-      socket.emit(JoinFailed)
+      socket.emit(JoinSessionFailed)
+    } else if (args.name == null) {
+      socket.emit(JoinSessionFailed)
     } else {
-      socket.join(session.id)
-      session.addUser(socket.id)
-      socket.emit(JoinSuccess)
+      if (session.addUser(new User(args.name, socket.id))) {
+        socket.join(session.id)
+        socket.emit(JoinSessionSuccess)
+      } else {
+        socket.emit(JoinSessionFailed)
+      }
     }
   }
 }
@@ -90,10 +102,63 @@ export function addQuestionToSession(
         debug('question added')
         session.quiz.addQuestion(question)
         socket.emit(AddQuestionSuccess)
-        //if (session.isStarted) {
-        socket.broadcast.to(session.id).emit(QuestionAdded, { question })
-        //}
+        // if (session.isStarted) {
+        //   socket.broadcast.to(session.id).emit(QuestionAdded, { question })
+        // }
       }
     }
+  }
+}
+
+/**
+ * Removes a user from the owner's Session
+ * @param socket Client socket owning the Session
+ * @param sessions List of current Sessions
+ */
+export function removeUserFromSession(
+  socket: Socket,
+  sessions: Session[]
+): SocketEventHandler<SessionKickArgs> {
+  return (args: SessionKickArgs) => {
+    const session = sessions.find((session) => session.owner === socket.id)
+    if (session == null) {
+      debug(`could not find session with owner ${socket.id}`)
+      socket.emit(SessionKickFailed)
+    } else if (args.name == null) {
+      debug('missing name field')
+      socket.emit(SessionKickFailed)
+    } else if (!session.removeUser(args.name)) {
+      debug(`could not remove user ${args.name}`)
+      socket.emit(SessionKickFailed)
+    } else {
+      debug(`removed user ${args.name}`)
+      const res: SessionKickSuccessResponse = {
+        name: args.name,
+      }
+      socket.leave(session.id)
+      socket.emit(SessionKickSuccess, res)
+    }
+  }
+}
+
+/**
+ * Starts the owner's Session
+ * @param socket Client socket owning the Session
+ * @param sessions List of current Sessions
+ */
+export function startSession(
+  socket: Socket,
+  sessions: Session[]
+): SocketEventHandler<SessionStartArgs> {
+  return () => {
+    const session = sessions.find((session) => session.owner === socket.id)
+    if (session == null) {
+      debug(`could not find session with owner ${socket.id}`)
+      socket.emit(SessionKickFailed)
+      return
+    }
+
+    debug(`session ${session.id} starting`)
+    socket.broadcast.to(session.id).emit(SessionStarted)
   }
 }

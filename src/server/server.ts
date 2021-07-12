@@ -1,11 +1,19 @@
 import { createServer, Server as HttpServer } from 'http'
 import { Session } from 'session'
-import { Join, CreateNew, AddQuestion } from 'session/event'
+import {
+  JoinSession,
+  CreateNewSession,
+  AddQuestion,
+  SessionKick,
+  StartSession,
+} from 'session/event'
 import { Server } from 'socket.io'
 import {
   addUserToSession,
   createSession,
   addQuestionToSession,
+  removeUserFromSession,
+  startSession,
 } from './handlers'
 
 // All created Sessions
@@ -18,11 +26,15 @@ function configure(io: Server) {
   io.on('connection', (socket) => {
     debug('received socket connection')
 
-    socket.on(CreateNew, createSession(socket, sessions))
+    socket.on(CreateNewSession, createSession(socket, sessions))
 
-    socket.on(Join, addUserToSession(socket, sessions))
+    socket.on(JoinSession, addUserToSession(socket, sessions))
 
     socket.on(AddQuestion, addQuestionToSession(socket, sessions))
+
+    socket.on(SessionKick, removeUserFromSession(socket, sessions))
+
+    socket.on(StartSession, startSession(socket, sessions))
   })
 }
 
