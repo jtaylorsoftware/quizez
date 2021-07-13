@@ -8,14 +8,17 @@ import {
   JoinSessionArgs,
   JoinSessionFailed,
   JoinSessionSuccess,
+  NextQuestion,
+  NextQuestionArgs,
+  NextQuestionResponse,
   SessionKickArgs,
   SessionKickFailed,
   SessionKickSuccess,
   SessionKickSuccessResponse,
   SessionStartArgs,
   SessionStarted,
-} from 'session/event'
-import { Socket } from 'socket.io'
+} from 'session/events'
+import { Socket, Server } from 'socket.io'
 
 const debug = require('debug')('server')
 
@@ -102,9 +105,6 @@ export function addQuestionToSession(
         debug('question added')
         session.quiz.addQuestion(question)
         socket.emit(AddQuestionSuccess)
-        // if (session.isStarted) {
-        //   socket.broadcast.to(session.id).emit(QuestionAdded, { question })
-        // }
       }
     }
   }
@@ -112,10 +112,12 @@ export function addQuestionToSession(
 
 /**
  * Removes a user from the owner's Session
+ * @param io the socket.io server object
  * @param socket Client socket owning the Session
  * @param sessions List of current Sessions
  */
 export function removeUserFromSession(
+  io: Server,
   socket: Socket,
   sessions: Session[]
 ): SocketEventHandler<SessionKickArgs> {
@@ -127,26 +129,33 @@ export function removeUserFromSession(
     } else if (args.name == null) {
       debug('missing name field')
       socket.emit(SessionKickFailed)
-    } else if (!session.removeUser(args.name)) {
-      debug(`could not remove user ${args.name}`)
-      socket.emit(SessionKickFailed)
     } else {
+      const user = session.removeUser(args.name)
+      if (user == null) {
+        debug(`could not remove user ${args.name}`)
+        socket.emit(SessionKickFailed)
+        return
+      }
+
       debug(`removed user ${args.name}`)
       const res: SessionKickSuccessResponse = {
         name: args.name,
       }
-      socket.leave(session.id)
-      socket.emit(SessionKickSuccess, res)
+
+      io.to(session.id).emit(SessionKickSuccess, res)
+      io.in(user.id).socketsLeave(session.id)
     }
   }
 }
 
 /**
  * Starts the owner's Session
+ * @param io the socket.io server object
  * @param socket Client socket owning the Session
  * @param sessions List of current Sessions
  */
 export function startSession(
+  io: Server,
   socket: Socket,
   sessions: Session[]
 ): SocketEventHandler<SessionStartArgs> {
@@ -159,6 +168,44 @@ export function startSession(
     }
 
     debug(`session ${session.id} starting`)
-    socket.broadcast.to(session.id).emit(SessionStarted)
+    session.start()
+
+    io.to(session.id).emit(SessionStarted)
+  }
+}
+
+/**
+ * Pushes the next question to users
+ * @param socket Client socket owning the Session
+ * @param sessions List of current Sessions
+ */
+export function pushNextQuestion(
+  socket: Socket,
+  sessions: Session[]
+): SocketEventHandler<NextQuestionArgs> {
+  return () => {
+    const session = sessions.find((session) => session.owner === socket.id)
+    if (session == null) {
+      debug(`could not find session with owner ${socket.id}`)
+      return
+    }
+
+    if (!session.isStarted) {
+      debug(`session ${session.id} is not started, not sending next question`)
+      return
+    }
+
+    const nextQuestion = session.quiz.nextQuestion
+    if (nextQuestion == null) {
+      debug(`session ${session.id} - quiz has no more questions`)
+      return
+    }
+
+    debug(`session ${session.id} sending next question`)
+    const res: NextQuestionResponse = {
+      question: nextQuestion,
+    }
+
+    socket.to(session.id).emit(NextQuestion, res)
   }
 }

@@ -6,7 +6,8 @@ import {
   AddQuestion,
   SessionKick,
   StartSession,
-} from 'session/event'
+  NextQuestion,
+} from 'session/events'
 import { Server } from 'socket.io'
 import {
   addUserToSession,
@@ -14,6 +15,7 @@ import {
   addQuestionToSession,
   removeUserFromSession,
   startSession,
+  pushNextQuestion,
 } from './handlers'
 
 // All created Sessions
@@ -32,9 +34,11 @@ function configure(io: Server) {
 
     socket.on(AddQuestion, addQuestionToSession(socket, sessions))
 
-    socket.on(SessionKick, removeUserFromSession(socket, sessions))
+    socket.on(SessionKick, removeUserFromSession(io, socket, sessions))
 
-    socket.on(StartSession, startSession(socket, sessions))
+    socket.on(StartSession, startSession(io, socket, sessions))
+
+    socket.on(NextQuestion, pushNextQuestion(socket, sessions))
   })
 }
 

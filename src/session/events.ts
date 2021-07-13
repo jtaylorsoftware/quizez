@@ -84,15 +84,16 @@ export const SessionStarted = 'session started'
 export type SessionStartedResponse = void
 
 /**
- * A Session owner has added a question and users are receiving the question
+ * A Session owner is pushing the next question to users
  */
-export const QuestionAdded = 'question added'
-export interface QuestionAddedResponse {
+export const NextQuestion = 'next question'
+export type NextQuestionArgs = void
+export interface NextQuestionResponse {
   question: Question
 }
 
 /**
- * A Session owner is pushing a question to users
+ * A Session owner is adding a question
  */
 export const AddQuestion = 'add question'
 export interface AddQuestionArgs {

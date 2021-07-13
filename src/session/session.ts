@@ -8,7 +8,7 @@ const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)
 export class Session {
   readonly id: string = nanoid()
   readonly quiz: Quiz = new Quiz()
-  private users: User[] = []
+  private users: Map<string, User> = new Map<string, User>()
 
   private _isStarted: boolean = false
   public get isStarted(): boolean {
@@ -23,25 +23,20 @@ export class Session {
    * @returns true if user is added successfully
    */
   addUser(user: User): boolean {
-    if (user.id === this.owner) {
+    if (user.id === this.owner || this.isStarted || this.users.has(user.name)) {
       return false
     }
-    this.users.push(user)
+    this.users.set(user.name, user)
     return true
   }
 
   /**
    * Removes a user from the Session
    * @param name Name of the user to remove
-   * @returns true if user is removed successfully
+   * @returns the removed User
    */
-  removeUser(name: string): boolean {
-    const index = this.users.findIndex((user) => user.name === name)
-    if (index === -1) {
-      return false
-    }
-    this.users.splice(index, 1)
-    return true
+  removeUser(name: string): User | undefined {
+    return this.users.get(name)
   }
 
   /**
@@ -62,6 +57,16 @@ export class User {
  */
 export class Quiz {
   private questions: Question[] = []
+  private currentQuestion: number = 0
+
+  get nextQuestion(): Question | null {
+    if (this.currentQuestion >= this.questions.length) {
+      return null
+    }
+    const question = this.questions[this.currentQuestion]!
+    this.currentQuestion += 1
+    return question
+  }
 
   /**
    * Adds a question to the Quiz. Questions can be added at any time.
