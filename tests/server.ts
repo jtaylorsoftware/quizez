@@ -325,6 +325,7 @@ describe('Server', () => {
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
           expect(res.user).toBe(name)
+          expect(res.response).toBe('1')
           expect(res.isCorrect).toBe(true)
           expect(res.firstCorrect).toBe(name)
           expect(res.frequency).toBe(1)

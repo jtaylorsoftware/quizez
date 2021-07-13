@@ -253,6 +253,11 @@ export interface QuestionResponseAddedResponse {
   user: string
 
   /**
+   * The user's response value
+   */
+  response: string
+
+  /**
    * True if the user's Response is correct
    */
   isCorrect: boolean

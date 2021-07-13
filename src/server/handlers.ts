@@ -1,4 +1,4 @@
-import { Question, Session, User } from 'session'
+import { Question, responseToString, Session, User } from 'session'
 import {
   AddQuestionArgs,
   AddQuestionFailed,
@@ -292,6 +292,7 @@ export function addQuestionResponse(
       index: args.index,
       session: session.id,
       user: user.name,
+      response: responseToString(args.response),
       isCorrect,
       firstCorrect,
       frequency: question.frequencyOf(args.response),

@@ -175,6 +175,16 @@ export interface FillInResponse {
 }
 
 export type ResponseType = MultipleChoiceResponse | FillInResponse
+export function responseToString(response: ResponseType): string {
+  switch (response.type) {
+    case MultipleChoiceFormat:
+      return response.choice.toString()
+    case FillInFormat:
+      return response.text
+    default:
+      return ''
+  }
+}
 
 /**
  * A varying-type Question, that could be multiple choice or fill-in
