@@ -1,4 +1,12 @@
-import { Question, QuestionBodyType } from './session'
+import { Question, QuestionBodyType, ResponseType } from './session'
+
+/**
+ * Events between server & client - arguments coming inn
+ * from client requests are represented by interfaces ending
+ * in "Args." Responses from server to client are
+ * represented by interfaces or types ending in "Response."
+ *
+ */
 
 /**
  * A client is creating a new joinable Session
@@ -52,6 +60,11 @@ export type JoinSessionFailedResponse = void
 export const SessionKick = 'kick'
 export interface SessionKickArgs {
   /**
+   * The id of the session
+   */
+  session: string | undefined
+
+  /**
    * The name of the user removed
    */
   name: string | undefined
@@ -62,6 +75,14 @@ export interface SessionKickArgs {
  */
 export const SessionKickSuccess = 'kick success'
 export interface SessionKickSuccessResponse {
+  /**
+   * The session this applies to
+   */
+  session: string
+
+  /**
+   * The user kicked
+   */
   name: string
 }
 
@@ -75,20 +96,45 @@ export type SessionKickFailedResponse = void
  * Owner is starting session
  */
 export const StartSession = 'start session'
-export type SessionStartArgs = void
+export interface SessionStartArgs {
+  /**
+   * The session this applies to
+   */
+  session: string | undefined
+}
 
 /**
  * A Session has started
  */
 export const SessionStarted = 'session started'
-export type SessionStartedResponse = void
+export interface SessionStartedResponse {
+  /**
+   * The session this applies to
+   */
+  session: string | undefined
+}
 
 /**
  * A Session owner is pushing the next question to users
  */
 export const NextQuestion = 'next question'
-export type NextQuestionArgs = void
+export interface NextQuestionArgs {
+  /**
+   * The id of the session this applies to
+   */
+  session: string | undefined
+}
 export interface NextQuestionResponse {
+  /**
+   * The id of the session containing the Question
+   */
+  session: string
+
+  /**
+   * The index of the next Questoin
+   */
+  index: number
+
   question: Question
 }
 
@@ -97,6 +143,11 @@ export interface NextQuestionResponse {
  */
 export const AddQuestion = 'add question'
 export interface AddQuestionArgs {
+  /**
+   * The id of the session to add to
+   */
+  session: string | undefined
+
   /**
    * The Question text
    */
@@ -121,3 +172,103 @@ export type AddQuestionFailedResponse = void
  */
 export const AddQuestionSuccess = 'add question success'
 export type AddQuestionSuccessResponse = void
+
+/**
+ * User is responding to a question
+ */
+export const QuestionResponse = 'question response'
+export interface QuestionResponseArgs {
+  /**
+   * The id of the session containing the Question
+   */
+  session: string | undefined
+
+  /**
+   * The name of the user responding
+   */
+  name: string | undefined
+
+  /**
+   * The Question index
+   */
+  index: number | undefined
+
+  /**
+   * The user's response
+   */
+  response: ResponseType | undefined
+}
+
+/**
+ * User failed to add Response
+ */
+export const QuestionResponseFailed = 'question response failed'
+export type QuestionResponseFailedResponse = void
+
+/**
+ * User successfully added Response
+ */
+export const QuestionResponseSuccess = 'question response success'
+export interface QuestionResponseSuccessResponse {
+  /**
+   * The id of the session containing the Question
+   */
+  session: string
+
+  /**
+   * The index of the question this applies to
+   */
+  index: number
+
+  /**
+   * True if user is the first correct responder
+   */
+  firstCorrect: boolean
+
+  /**
+   * True if user Response is correct
+   */
+  isCorrect: boolean
+}
+
+/**
+ * Server notifying the Session owner that user submitted a Response
+ * successfully
+ */
+export const QuestionResponseAdded = 'question response added'
+export interface QuestionResponseAddedResponse {
+  /**
+   * The id of the session containing the Question
+   */
+  session: string
+
+  /**
+   * The Question index
+   */
+  index: number
+
+  /**
+   * The user submitting Response
+   */
+  user: string
+
+  /**
+   * True if the user's Response is correct
+   */
+  isCorrect: boolean
+
+  /**
+   * Name of the first correct responder
+   */
+  firstCorrect: string
+
+  /**
+   * The frequency of the user's response
+   */
+  frequency: number
+
+  /**
+   * The relative frequency of the user's response
+   */
+  relativeFrequency: number
+}

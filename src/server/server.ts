@@ -7,6 +7,7 @@ import {
   SessionKick,
   StartSession,
   NextQuestion,
+  QuestionResponse,
 } from 'session/events'
 import { Server } from 'socket.io'
 import {
@@ -16,10 +17,11 @@ import {
   removeUserFromSession,
   startSession,
   pushNextQuestion,
+  addQuestionResponse,
 } from './handlers'
 
-// All created Sessions
-const sessions: Session[] = []
+// All created Sessions, keyed on Session id
+const sessions = new Map<string, Session>()
 
 const debug = require('debug')('server')
 
@@ -39,6 +41,8 @@ function configure(io: Server) {
     socket.on(StartSession, startSession(io, socket, sessions))
 
     socket.on(NextQuestion, pushNextQuestion(socket, sessions))
+
+    socket.on(QuestionResponse, addQuestionResponse(io, socket, sessions))
   })
 }
 

@@ -11,6 +11,12 @@ import {
   NextQuestion,
   NextQuestionArgs,
   NextQuestionResponse,
+  QuestionResponseAdded,
+  QuestionResponseAddedResponse,
+  QuestionResponseArgs,
+  QuestionResponseFailed,
+  QuestionResponseSuccess,
+  QuestionResponseSuccessResponse,
   SessionKickArgs,
   SessionKickFailed,
   SessionKickSuccess,
@@ -31,7 +37,7 @@ type SocketEventHandler<T> = (args: T) => void
  */
 export function createSession(
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<void> {
   return () => {
     const session = new Session(socket.id)
@@ -39,7 +45,7 @@ export function createSession(
     const res: CreatedSessionResponse = {
       id: session.id,
     }
-    sessions.push(session)
+    sessions.set(session.id, session)
     socket.join(session.id)
     socket.emit(CreatedSession, res)
   }
@@ -53,11 +59,11 @@ export function createSession(
  */
 export function addUserToSession(
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<JoinSessionArgs> {
   return (args: JoinSessionArgs) => {
     debug(`client joining session ${args.id} with name ${args.name}`)
-    const session = sessions.find((session) => session.id === args.id)
+    const session = sessions.get(args.id ?? '')
     if (session == null) {
       socket.emit(JoinSessionFailed)
     } else if (args.name == null) {
@@ -80,13 +86,13 @@ export function addUserToSession(
  */
 export function addQuestionToSession(
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<AddQuestionArgs> {
   return (args: AddQuestionArgs) => {
     debug(`client ${socket.id} (presumably owner) adding question to a session`)
     debug(args)
-    const session = sessions.find((session) => session.owner === socket.id)
-    if (session == null) {
+    const session = sessions.get(args.session ?? '')
+    if (session == null || session.owner !== socket.id) {
       debug(`client ${socket.id} was not owner of any session`)
       socket.emit(AddQuestionFailed)
     } else {
@@ -119,12 +125,12 @@ export function addQuestionToSession(
 export function removeUserFromSession(
   io: Server,
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<SessionKickArgs> {
   return (args: SessionKickArgs) => {
-    const session = sessions.find((session) => session.owner === socket.id)
-    if (session == null) {
-      debug(`could not find session with owner ${socket.id}`)
+    const session = sessions.get(args.session ?? '')
+    if (session == null || session.owner !== socket.id) {
+      debug(`could not find session ${args.session} with owner ${socket.id}`)
       socket.emit(SessionKickFailed)
     } else if (args.name == null) {
       debug('missing name field')
@@ -139,6 +145,7 @@ export function removeUserFromSession(
 
       debug(`removed user ${args.name}`)
       const res: SessionKickSuccessResponse = {
+        session: session.id,
         name: args.name,
       }
 
@@ -157,12 +164,12 @@ export function removeUserFromSession(
 export function startSession(
   io: Server,
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<SessionStartArgs> {
-  return () => {
-    const session = sessions.find((session) => session.owner === socket.id)
-    if (session == null) {
-      debug(`could not find session with owner ${socket.id}`)
+  return (args: SessionStartArgs) => {
+    const session = sessions.get(args.session ?? '')
+    if (session == null || session.owner !== socket.id) {
+      debug(`could not find session ${args.session} with owner ${socket.id}`)
       socket.emit(SessionKickFailed)
       return
     }
@@ -181,11 +188,11 @@ export function startSession(
  */
 export function pushNextQuestion(
   socket: Socket,
-  sessions: Session[]
+  sessions: Map<string, Session>
 ): SocketEventHandler<NextQuestionArgs> {
-  return () => {
-    const session = sessions.find((session) => session.owner === socket.id)
-    if (session == null) {
+  return (args: NextQuestionArgs) => {
+    const session = sessions.get(args.session ?? '')
+    if (session == null || session.owner !== socket.id) {
       debug(`could not find session with owner ${socket.id}`)
       return
     }
@@ -195,7 +202,7 @@ export function pushNextQuestion(
       return
     }
 
-    const nextQuestion = session.quiz.nextQuestion
+    const nextQuestion = session.quiz.advanceToNextQuestion()
     if (nextQuestion == null) {
       debug(`session ${session.id} - quiz has no more questions`)
       return
@@ -203,9 +210,102 @@ export function pushNextQuestion(
 
     debug(`session ${session.id} sending next question`)
     const res: NextQuestionResponse = {
+      index: session.quiz.currentQuestionIndex,
+      session: session.id,
       question: nextQuestion,
     }
 
     socket.to(session.id).emit(NextQuestion, res)
+  }
+}
+
+/**
+ * Checks and adds a user's response to a Quiz Question
+ * @param io the socket.io server object
+ * @param socket Client socket submitting response
+ * @param sessions List of current Sessions
+ */
+export function addQuestionResponse(
+  io: Server,
+  socket: Socket,
+  sessions: Map<string, Session>
+): SocketEventHandler<QuestionResponseArgs> {
+  return (args: QuestionResponseArgs) => {
+    const session = sessions.get(args.session ?? '')
+    if (session == null) {
+      debug(`could not find session ${args.session} to respond to`)
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    const user = session.findUserByName(args.name ?? '')
+    if (user == null || user.id !== socket.id) {
+      debug(`could not add response by unknown user`)
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    if (session.quiz.currentQuestion == null) {
+      debug(
+        `could not respond to session ${session.id} - not started (question null)`
+      )
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    if (
+      args.index == null ||
+      args.index < 0 ||
+      args.index >= session.quiz.numQuestions ||
+      args.index > session.quiz.currentQuestionIndex
+    ) {
+      debug(
+        `could not respond to session ${session.id} - args.index (${args.index}) out of range`
+      )
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    if (args.response == null) {
+      debug(`could not respond to session ${session.id} - args.response null`)
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    const question = session.quiz.questionAt(args.index)!
+    let isCorrect: boolean
+
+    try {
+      isCorrect = question.addResponse(args.response)
+    } catch (error) {
+      debug(`failed to add response to ${session.id} question ${args.index}`)
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
+    debug(`successfully added response to ${session.id} question ${args.index}`)
+
+    const firstCorrect = question.firstCorrect ?? ''
+
+    // Send statistics to owner
+    const ownerRes: QuestionResponseAddedResponse = {
+      index: args.index,
+      session: session.id,
+      user: user.name,
+      isCorrect,
+      firstCorrect,
+      frequency: question.frequencyOf(args.response),
+      relativeFrequency: question.relativeFrequencyOf(args.response),
+    }
+    io.to(session.owner).emit(QuestionResponseAdded, ownerRes)
+
+    // Send grade to user
+    const userRes: QuestionResponseSuccessResponse = {
+      index: args.index,
+      session: session.id,
+      firstCorrect: firstCorrect === user.name,
+      isCorrect,
+    }
+    socket.emit(QuestionResponseSuccess, userRes)
   }
 }

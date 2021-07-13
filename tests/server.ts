@@ -2,7 +2,7 @@ import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
-import { Question } from 'session'
+import { MultipleChoiceFormat, Question } from 'session'
 import {
   AddQuestion,
   AddQuestionFailed,
@@ -16,9 +16,18 @@ import {
   JoinSessionSuccess,
   NextQuestion,
   NextQuestionResponse,
+  QuestionResponse,
+  QuestionResponseAdded,
+  QuestionResponseAddedResponse,
+  QuestionResponseArgs,
+  QuestionResponseFailed,
+  QuestionResponseSuccess,
+  QuestionResponseSuccessResponse,
   SessionKick,
+  SessionKickArgs,
   SessionKickFailed,
   SessionKickSuccess,
+  SessionKickSuccessResponse,
   SessionStarted,
   StartSession,
 } from 'session/events'
@@ -125,17 +134,15 @@ describe('Server', () => {
         done()
       })
 
-      const question: Question = {
-        text: 'Question',
-        body: {
-          type: 'MultipleChoice',
-          choices: [
-            { text: 'Choice One', isCorrect: false },
-            { text: 'Choice Two', isCorrect: true },
-          ],
-        },
-      }
-      sessionOwner.emit(AddQuestion, question)
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 0,
+      })
+      sessionOwner.emit(AddQuestion, {
+        session: id,
+        ...question,
+      })
     })
 
     it('should NOT allow other users to add questions', (done) => {
@@ -147,17 +154,16 @@ describe('Server', () => {
         done()
       })
 
-      const question: Question = {
-        text: 'Question',
-        body: {
-          type: 'MultipleChoice',
-          choices: [
-            { text: 'Choice One', isCorrect: false },
-            { text: 'Choice Two', isCorrect: true },
-          ],
-        },
-      }
-      user.emit(AddQuestion, question)
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      user.emit(AddQuestion, {
+        session: id,
+        ...question,
+      })
     })
 
     it('should broadcast to all users when owner kicks user', (done) => {
@@ -168,8 +174,10 @@ describe('Server', () => {
 
       let eventTimeout: NodeJS.Timeout
       let ownerReceive: boolean = false
-      sessionOwner.on(SessionKickSuccess, () => {
+      sessionOwner.on(SessionKickSuccess, (res: SessionKickSuccessResponse) => {
         ownerReceive = true
+        expect(res.name).toBe(name)
+        expect(res.session).toBe(id)
         if (ownerReceive && userReceive) {
           clearTimeout(eventTimeout)
           done()
@@ -177,8 +185,10 @@ describe('Server', () => {
       })
 
       let userReceive: boolean = false
-      user.on(SessionKickSuccess, () => {
+      user.on(SessionKickSuccess, (res: SessionKickSuccessResponse) => {
         userReceive = true
+        expect(res.name).toBe(name)
+        expect(res.session).toBe(id)
         if (ownerReceive && userReceive) {
           clearTimeout(eventTimeout)
           done()
@@ -193,7 +203,11 @@ describe('Server', () => {
         done()
       }, 5000)
 
-      sessionOwner.emit(SessionKick, { name })
+      const kickArgs: SessionKickArgs = {
+        name,
+        session: id,
+      }
+      sessionOwner.emit(SessionKick, kickArgs)
     })
 
     it('should NOT allow other users to kick users', (done) => {
@@ -206,7 +220,11 @@ describe('Server', () => {
         done()
       })
 
-      user.emit(SessionKick, { name })
+      const kickArgs: SessionKickArgs = {
+        name,
+        session: id,
+      }
+      user.emit(SessionKick, kickArgs)
     })
 
     it('should broadcast to all users when owner starts session', (done) => {
@@ -221,13 +239,15 @@ describe('Server', () => {
         done()
       })
 
-      sessionOwner.emit(StartSession)
+      sessionOwner.emit(StartSession, { session: id })
     })
 
     it('should broadcast next question to all users', (done) => {
       let eventTimeout: NodeJS.Timeout
       user.on(SessionStarted, () => {
-        sessionOwner.emit(NextQuestion)
+        sessionOwner.emit(NextQuestion, {
+          session: id,
+        })
 
         // Fail if NextQuestion is not received
         eventTimeout = setTimeout(() => {
@@ -241,20 +261,89 @@ describe('Server', () => {
         }
       })
 
-      const question: Question = {
-        text: 'Question',
-        body: {
-          type: 'MultipleChoice',
-          choices: [
-            { text: 'Choice One', isCorrect: false },
-            { text: 'Choice Two', isCorrect: true },
-          ],
-        },
-      }
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
 
-      sessionOwner.emit(AddQuestion, question)
+      sessionOwner.emit(AddQuestion, {
+        session: id,
+        ...question,
+      })
       sessionOwner.on(AddQuestionSuccess, () => {
-        sessionOwner.emit(StartSession)
+        sessionOwner.emit(StartSession, { session: id })
+      })
+    })
+
+    it('should grade responses and send results', (done) => {
+      sessionOwner.on(AddQuestionSuccess, () => {
+        sessionOwner.emit(StartSession, { session: id })
+      })
+      sessionOwner.on(SessionStarted, () => {
+        sessionOwner.emit(NextQuestion, { session: id })
+      })
+
+      user.on(NextQuestion, () => {
+        const response: QuestionResponseArgs = {
+          session: id,
+          name,
+          index: 0,
+          response: {
+            type: MultipleChoiceFormat,
+            choice: 1,
+            submitter: name,
+          },
+        }
+        user.emit(QuestionResponse, response)
+      })
+
+      user.on(QuestionResponseFailed, () => {
+        expect('QuestionResponseFailed').toBe('QuestionResponseSuccess')
+        done()
+      })
+
+      let userReceived = false
+      let ownerReceived = false
+      user.on(
+        QuestionResponseSuccess,
+        (res: QuestionResponseSuccessResponse) => {
+          userReceived = true
+          expect(res.index).toBe(0)
+          expect(res.session).toBe(id)
+          expect(res.firstCorrect).toBe(true)
+          expect(res.isCorrect).toBe(true)
+          if (userReceived && ownerReceived) {
+            done()
+          }
+        }
+      )
+      sessionOwner.on(
+        QuestionResponseAdded,
+        (res: QuestionResponseAddedResponse) => {
+          ownerReceived = true
+          expect(res.index).toBe(0)
+          expect(res.session).toBe(id)
+          expect(res.user).toBe(name)
+          expect(res.isCorrect).toBe(true)
+          expect(res.firstCorrect).toBe(name)
+          expect(res.frequency).toBe(1)
+          expect(res.relativeFrequency).toBe(1)
+          if (userReceived && ownerReceived) {
+            done()
+          }
+        }
+      )
+
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      sessionOwner.emit(AddQuestion, {
+        session: id,
+        ...question,
       })
     })
   })
