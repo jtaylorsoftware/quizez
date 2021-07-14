@@ -98,7 +98,7 @@ export type SessionKickFailedResponse = void
 export const StartSession = 'start session'
 export interface SessionStartArgs {
   /**
-   * The session this applies to
+   * The session to start
    */
   session: string | undefined
 }
@@ -109,7 +109,51 @@ export interface SessionStartArgs {
 export const SessionStarted = 'session started'
 export interface SessionStartedResponse {
   /**
-   * The session this applies to
+   * The session that started
+   */
+  session: string
+}
+
+/**
+ * A Session failed to start
+ */
+export const SessionStartFailed = 'session start failed'
+export interface SessionStartFailedResponse {
+  /**
+   * The session id that did not start
+   */
+  session: string | undefined
+}
+
+/**
+ * Owner is ending session
+ */
+export const EndSession = 'end session'
+export interface EndSessionArgs {
+  /**
+   * The session to end
+   */
+  session: string | undefined
+}
+
+/**
+ * Session has ended
+ */
+export const SessionEnded = 'session ended'
+export interface SessionEndedResponse {
+  /**
+   * The session that ended
+   */
+  session: string
+}
+
+/**
+ * A Session failed to end
+ */
+export const SessionEndFailed = 'session end failed'
+export interface SessionEndFailedResponse {
+  /**
+   * The session id that did not end
    */
   session: string | undefined
 }

@@ -10,6 +10,8 @@ import {
   CreatedSession,
   CreatedSessionResponse,
   CreateNewSession,
+  EndSession,
+  EndSessionArgs,
   JoinSession,
   JoinSessionArgs,
   JoinSessionFailed,
@@ -23,6 +25,9 @@ import {
   QuestionResponseFailed,
   QuestionResponseSuccess,
   QuestionResponseSuccessResponse,
+  SessionEnded,
+  SessionEndedResponse,
+  SessionEndFailed,
   SessionKick,
   SessionKickArgs,
   SessionKickFailed,
@@ -346,6 +351,39 @@ describe('Server', () => {
         session: id,
         ...question,
       })
+    })
+
+    it('should notify all users of session ending', (done) => {
+      let ownerReceived = false
+      let userReceived = false
+
+      sessionOwner.on(SessionEnded, (args: SessionEndedResponse) => {
+        ownerReceived = true
+        expect(args.session).toBe(id)
+        if (ownerReceived && userReceived) {
+          done()
+        }
+      })
+      user.on(SessionEnded, (args: SessionEndedResponse) => {
+        userReceived = true
+        expect(args.session).toBe(id)
+        if (ownerReceived && userReceived) {
+          done()
+        }
+      })
+      sessionOwner.on(SessionEndFailed, () => {
+        expect('SessionEndFailed').toBe('SessionEnded')
+        done()
+      })
+      user.on(SessionEndFailed, () => {
+        expect('SessionEndFailed').toBe('SessionEnded')
+        done()
+      })
+
+      const args: EndSessionArgs = {
+        session: id,
+      }
+      sessionOwner.emit(EndSession, args)
     })
   })
 })

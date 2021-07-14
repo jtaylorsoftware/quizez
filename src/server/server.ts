@@ -8,6 +8,7 @@ import {
   StartSession,
   NextQuestion,
   QuestionResponse,
+  EndSession,
 } from 'session/events'
 import { Server } from 'socket.io'
 import {
@@ -18,6 +19,7 @@ import {
   startSession,
   pushNextQuestion,
   addQuestionResponse,
+  endSession,
 } from './handlers'
 
 // All created Sessions, keyed on Session id
@@ -39,6 +41,8 @@ function configure(io: Server) {
     socket.on(SessionKick, removeUserFromSession(io, socket, sessions))
 
     socket.on(StartSession, startSession(io, socket, sessions))
+
+    socket.on(EndSession, endSession(io, socket, sessions))
 
     socket.on(NextQuestion, pushNextQuestion(socket, sessions))
 

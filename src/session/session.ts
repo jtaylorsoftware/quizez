@@ -38,7 +38,7 @@ export class Session {
   constructor(readonly owner: string) {}
 
   /**
-   * Finds a User by name
+   * Finds a User in the Session by name
    * @param name name of User to lookup
    * @returns the User if found, or undefined
    */
@@ -71,10 +71,11 @@ export class Session {
    */
   removeUser(name: string): User | undefined {
     const user = this.users.get(name)
-    if (user != null) {
+    if (user != null && !this.hasEnded) {
       this.users = this.users.delete(user.name)
+      return user
     }
-    return user
+    return undefined
   }
 
   /**

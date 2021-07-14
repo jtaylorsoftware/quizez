@@ -5,6 +5,8 @@ import {
   AddQuestionSuccess,
   CreatedSession,
   CreatedSessionResponse,
+  CreateNewSessionArgs,
+  EndSessionArgs,
   JoinSessionArgs,
   JoinSessionFailed,
   JoinSessionSuccess,
@@ -17,18 +19,25 @@ import {
   QuestionResponseFailed,
   QuestionResponseSuccess,
   QuestionResponseSuccessResponse,
+  SessionEnded,
+  SessionEndedResponse,
+  SessionEndFailed,
+  SessionEndFailedResponse,
   SessionKickArgs,
   SessionKickFailed,
   SessionKickSuccess,
   SessionKickSuccessResponse,
   SessionStartArgs,
   SessionStarted,
+  SessionStartedResponse,
+  SessionStartFailed,
+  SessionStartFailedResponse,
 } from 'session/events'
 import { Socket, Server } from 'socket.io'
 
 const debug = require('debug')('server')
 
-type SocketEventHandler<T> = (args: T) => void
+type SocketEventHandler<T> = (args?: T) => void
 
 /**
  * Creates a new Session with `socket` as its owner
@@ -38,7 +47,7 @@ type SocketEventHandler<T> = (args: T) => void
 export function createSession(
   socket: Socket,
   sessions: Map<string, Session>
-): SocketEventHandler<void> {
+): SocketEventHandler<CreateNewSessionArgs> {
   return () => {
     const session = new Session(socket.id)
     debug(`client creating session with id ${session.id}`)
@@ -61,7 +70,13 @@ export function addUserToSession(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<JoinSessionArgs> {
-  return (args: JoinSessionArgs) => {
+  return (args?: JoinSessionArgs) => {
+    if (args == null) {
+      debug('no args passed to addUserToSession')
+      socket.emit(JoinSessionFailed)
+      return
+    }
+
     debug(`client joining session ${args.id} with name ${args.name}`)
     const session = sessions.get(args.id ?? '')
     if (session == null) {
@@ -88,7 +103,13 @@ export function addQuestionToSession(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<AddQuestionArgs> {
-  return (args: AddQuestionArgs) => {
+  return (args?: AddQuestionArgs) => {
+    if (args == null) {
+      debug('no args passed to addQuestionToSession')
+      socket.emit(AddQuestionFailed)
+      return
+    }
+
     debug(`client ${socket.id} (presumably owner) adding question to a session`)
     debug(args)
     const session = sessions.get(args.session ?? '')
@@ -127,7 +148,13 @@ export function removeUserFromSession(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<SessionKickArgs> {
-  return (args: SessionKickArgs) => {
+  return (args?: SessionKickArgs) => {
+    if (args == null) {
+      debug('no args passed to removeUserFromSession')
+      socket.emit(SessionKickFailed)
+      return
+    }
+
     const session = sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session ${args.session} with owner ${socket.id}`)
@@ -166,18 +193,33 @@ export function startSession(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<SessionStartArgs> {
-  return (args: SessionStartArgs) => {
+  return (args?: SessionStartArgs) => {
+    if (args == null) {
+      debug('no args passed to startSession')
+      const res: SessionStartFailedResponse = {
+        session: '',
+      }
+      socket.emit(SessionStartFailed, res)
+      return
+    }
+
     const session = sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session ${args.session} with owner ${socket.id}`)
-      socket.emit(SessionKickFailed)
+      const res: SessionStartFailedResponse = {
+        session: args.session,
+      }
+      socket.emit(SessionStartFailed, res)
       return
     }
 
     debug(`session ${session.id} starting`)
     session.start()
 
-    io.to(session.id).emit(SessionStarted)
+    const res: SessionStartedResponse = {
+      session: session.id,
+    }
+    io.to(session.id).emit(SessionStarted, res)
   }
 }
 
@@ -190,7 +232,12 @@ export function pushNextQuestion(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<NextQuestionArgs> {
-  return (args: NextQuestionArgs) => {
+  return (args?: NextQuestionArgs) => {
+    if (args == null) {
+      debug('no args passed to pushNextQuestion')
+      return
+    }
+
     const session = sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session with owner ${socket.id}`)
@@ -230,7 +277,13 @@ export function addQuestionResponse(
   socket: Socket,
   sessions: Map<string, Session>
 ): SocketEventHandler<QuestionResponseArgs> {
-  return (args: QuestionResponseArgs) => {
+  return (args?: QuestionResponseArgs) => {
+    if (args == null) {
+      debug('no args passed to addQuestionResponse')
+      socket.emit(QuestionResponseFailed)
+      return
+    }
+
     const session = sessions.get(args.session ?? '')
     if (session == null) {
       debug(`could not find session ${args.session} to respond to`)
@@ -308,5 +361,53 @@ export function addQuestionResponse(
       isCorrect,
     }
     socket.emit(QuestionResponseSuccess, userRes)
+  }
+}
+
+/**
+ * Ends a Session
+ * @param io the socket.io server object
+ * @param socket Client socket submitting response
+ * @param sessions List of current Sessions
+ */
+export function endSession(
+  io: Server,
+  socket: Socket,
+  sessions: Map<string, Session>
+): SocketEventHandler<EndSessionArgs> {
+  return (args?: EndSessionArgs) => {
+    if (args == null) {
+      debug('no args passed to endSession')
+      const res: SessionEndFailedResponse = {
+        session: '',
+      }
+      socket.emit(SessionEndFailed, res)
+      return
+    }
+
+    const session = sessions.get(args.session ?? '')
+    if (session == null || session.owner !== socket.id) {
+      debug(
+        `could not find session ${args.session} with owner ${socket.id} to end`
+      )
+      const res: SessionEndFailedResponse = {
+        session: args.session,
+      }
+      socket.emit(SessionEndFailed, res)
+      return
+    }
+
+    debug(`session ${session.id} ending`)
+    session.end()
+
+    const res: SessionEndedResponse = {
+      session: session.id,
+    }
+
+    // Tell all users Session has ended
+    io.to(session.id).emit(SessionEnded, res)
+
+    // Remove all except owner from Session (so they can request data until they disconnect)
+    io.except(session.owner).socketsLeave(session.id)
   }
 }
