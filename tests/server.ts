@@ -54,7 +54,7 @@ describe('Server', () => {
         events.CreatedSession,
         (res: events.CreatedSessionResponse) => {
           id = res.id
-          name = nanoid()
+          name = nanoid(4)
           const joinArgs: events.JoinSessionArgs = {
             id,
             name,
@@ -81,7 +81,7 @@ describe('Server', () => {
     it('should allow clients to join using existing id', (done) => {
       const testUser = io(`http://localhost:${port}`)
       testUser.on('connect', () => {
-        const testName = nanoid()
+        const testName = nanoid(4)
         const joinArgs: events.JoinSessionArgs = {
           id,
           name: testName,
@@ -183,7 +183,7 @@ describe('Server', () => {
           expect('No Event').toEqual('SessionKickSuccess')
         }
         done()
-      }, 5000)
+      }, 2000)
 
       const kickArgs: events.SessionKickArgs = {
         name,
@@ -214,7 +214,7 @@ describe('Server', () => {
       let eventTimeout = setTimeout(() => {
         expect('No Event').toEqual('SessionStarted')
         done()
-      }, 3000)
+      }, 2000)
 
       user.on(events.SessionStarted, () => {
         clearTimeout(eventTimeout)
@@ -234,10 +234,10 @@ describe('Server', () => {
         // Fail if NextQuestion is not received
         eventTimeout = setTimeout(() => {
           expect('No Event').toBe('NextQuestion')
-        }, 4000)
+        }, 2000)
       })
-      user.on(events.NextQuestion, (args: events.NextQuestionResponse) => {
-        if (args.question.text === question.text) {
+      user.on(events.NextQuestion, (res: events.NextQuestionResponse) => {
+        if (res.question.text === question.text) {
           clearTimeout(eventTimeout)
           done()
         }
@@ -336,17 +336,17 @@ describe('Server', () => {
 
       sessionOwner.on(
         events.SessionEnded,
-        (args: events.SessionEndedResponse) => {
+        (res: events.SessionEndedResponse) => {
           ownerReceived = true
-          expect(args.session).toBe(id)
+          expect(res.session).toBe(id)
           if (ownerReceived && userReceived) {
             done()
           }
         }
       )
-      user.on(events.SessionEnded, (args: events.SessionEndedResponse) => {
+      user.on(events.SessionEnded, (res: events.SessionEndedResponse) => {
         userReceived = true
-        expect(args.session).toBe(id)
+        expect(res.session).toBe(id)
         if (ownerReceived && userReceived) {
           done()
         }
@@ -364,6 +364,78 @@ describe('Server', () => {
         session: id,
       }
       sessionOwner.emit(events.EndSession, args)
+    })
+
+    it('should notify users when owner disconnects', (done) => {
+      let eventTimeout: NodeJS.Timeout
+
+      user.on(events.SessionEnded, () => {
+        clearTimeout(eventTimeout)
+        done()
+      })
+
+      eventTimeout = setTimeout(() => {
+        expect('No Event').toBe('SessionEnded')
+      }, 500)
+
+      sessionOwner.disconnect()
+    })
+
+    it('should notify users when another user disconnects', (done) => {
+      let eventTimeout: NodeJS.Timeout
+
+      sessionOwner.on(
+        events.UserDisconnected,
+        (res: events.UserDisconnectedResponse) => {
+          expect(res.name).toBe(name)
+          expect(res.session).toBe(id)
+          clearTimeout(eventTimeout)
+          done()
+        }
+      )
+
+      eventTimeout = setTimeout(() => {
+        expect('No Event').toBe('UserDisconnected')
+      }, 500)
+
+      user.disconnect()
+    })
+
+    it('should not send events to users that have left', (done) => {
+      let eventTimeout: NodeJS.Timeout
+      user.on(events.SessionEnded, () => {
+        clearTimeout(eventTimeout)
+        expect('SessionEnded').toBe('No Event')
+        done()
+      })
+      user.on(events.NextQuestion, () => {
+        clearTimeout(eventTimeout)
+        expect('NextQuestion').toBe('No Event')
+        done()
+      })
+
+      user.disconnect()
+
+      sessionOwner.emit(events.StartSession, { session: id })
+
+      eventTimeout = setTimeout(() => {
+        done()
+      }, 750)
+
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      sessionOwner.on(events.AddQuestionSuccess, () => {
+        sessionOwner.emit(events.NextQuestion, { session: id })
+      })
+
+      sessionOwner.emit(events.AddQuestion, {
+        session: id,
+        ...question,
+      })
     })
   })
 })

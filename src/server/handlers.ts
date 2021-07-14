@@ -1,6 +1,7 @@
 import { Question, responseToString, Session, User } from 'session'
 import * as events from 'session/events'
 import { Socket, Server } from 'socket.io'
+import { SessionController } from './server'
 
 const debug = require('debug')('server')
 
@@ -9,19 +10,19 @@ type SocketEventHandler<T> = (args?: T) => void
 /**
  * Creates a new Session with `socket` as its owner
  * @param socket Client socket creating the Session
- * @param sessions List of created sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function createSession(
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.CreateNewSessionArgs> {
   return () => {
     const session = new Session(socket.id)
-    debug(`client creating session with id ${session.id}`)
+    debug(`client ${socket.id} creating session with id ${session.id}`)
     const res: events.CreatedSessionResponse = {
       id: session.id,
     }
-    sessions.set(session.id, session)
+    sessionController.addSession(session)
     socket.join(session.id)
     socket.emit(events.CreatedSession, res)
   }
@@ -31,11 +32,11 @@ export function createSession(
  * Adds a client socket to a Session, if it exists, and if the
  * client id is not the owner
  * @param socket Client socket joining the Session
- * @param sessions List of created Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function addUserToSession(
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.JoinSessionArgs> {
   return (args?: events.JoinSessionArgs) => {
     if (args == null) {
@@ -44,8 +45,10 @@ export function addUserToSession(
       return
     }
 
-    debug(`client joining session ${args.id} with name ${args.name}`)
-    const session = sessions.get(args.id ?? '')
+    debug(
+      `client ${socket.id} joining session ${args.id} with name ${args.name}`
+    )
+    const session = sessionController.sessions.get(args.id ?? '')
     if (session == null) {
       socket.emit(events.JoinSessionFailed)
     } else if (args.name == null) {
@@ -64,11 +67,11 @@ export function addUserToSession(
 /**
  * Adds a question to the Session's quiz
  * @param socket Client socket owning the Session
- * @param sessions List of created Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function addQuestionToSession(
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.AddQuestionArgs> {
   return (args?: events.AddQuestionArgs) => {
     if (args == null) {
@@ -77,9 +80,15 @@ export function addQuestionToSession(
       return
     }
 
-    debug(`client ${socket.id} (presumably owner) adding question to a session`)
-    debug(args)
-    const session = sessions.get(args.session ?? '')
+    debug(
+      `client ${socket.id} adding question to a session:\n`,
+      'text:',
+      args.text,
+      '\n',
+      'body:',
+      args.body
+    )
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`client ${socket.id} was not owner of any session`)
       socket.emit(events.AddQuestionFailed)
@@ -108,12 +117,12 @@ export function addQuestionToSession(
  * Removes a user from the owner's Session
  * @param io the socket.io server object
  * @param socket Client socket owning the Session
- * @param sessions List of current Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function removeUserFromSession(
   io: Server,
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.SessionKickArgs> {
   return (args?: events.SessionKickArgs) => {
     if (args == null) {
@@ -122,7 +131,7 @@ export function removeUserFromSession(
       return
     }
 
-    const session = sessions.get(args.session ?? '')
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session ${args.session} with owner ${socket.id}`)
       socket.emit(events.SessionKickFailed)
@@ -153,12 +162,12 @@ export function removeUserFromSession(
  * Starts the owner's Session
  * @param io the socket.io server object
  * @param socket Client socket owning the Session
- * @param sessions List of current Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function startSession(
   io: Server,
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.SessionStartArgs> {
   return (args?: events.SessionStartArgs) => {
     if (args == null) {
@@ -170,7 +179,7 @@ export function startSession(
       return
     }
 
-    const session = sessions.get(args.session ?? '')
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session ${args.session} with owner ${socket.id}`)
       const res: events.SessionStartFailedResponse = {
@@ -193,11 +202,11 @@ export function startSession(
 /**
  * Pushes the next question to users
  * @param socket Client socket owning the Session
- * @param sessions List of current Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function pushNextQuestion(
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.NextQuestionArgs> {
   return (args?: events.NextQuestionArgs) => {
     if (args == null) {
@@ -205,7 +214,7 @@ export function pushNextQuestion(
       return
     }
 
-    const session = sessions.get(args.session ?? '')
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`could not find session with owner ${socket.id}`)
       return
@@ -237,12 +246,12 @@ export function pushNextQuestion(
  * Checks and adds a user's response to a Quiz Question
  * @param io the socket.io server object
  * @param socket Client socket submitting response
- * @param sessions List of current Sessions
+ * @param sessionController SessionController with all Sessions
  */
 export function addQuestionResponse(
   io: Server,
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.QuestionResponseArgs> {
   return (args?: events.QuestionResponseArgs) => {
     if (args == null) {
@@ -251,7 +260,7 @@ export function addQuestionResponse(
       return
     }
 
-    const session = sessions.get(args.session ?? '')
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null) {
       debug(`could not find session ${args.session} to respond to`)
       socket.emit(events.QuestionResponseFailed)
@@ -334,13 +343,13 @@ export function addQuestionResponse(
 /**
  * Ends a Session
  * @param io the socket.io server object
- * @param socket Client socket submitting response
- * @param sessions List of current Sessions
+ * @param socket Client socket that owns the Session
+ * @param sessionController SessionController with all Sessions
  */
 export function endSession(
   io: Server,
   socket: Socket,
-  sessions: Map<string, Session>
+  sessionController: SessionController
 ): SocketEventHandler<events.EndSessionArgs> {
   return (args?: events.EndSessionArgs) => {
     if (args == null) {
@@ -352,7 +361,7 @@ export function endSession(
       return
     }
 
-    const session = sessions.get(args.session ?? '')
+    const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(
         `could not find session ${args.session} with owner ${socket.id} to end`
@@ -376,5 +385,59 @@ export function endSession(
 
     // Remove all except owner from Session (so they can request data until they disconnect)
     io.except(session.owner).socketsLeave(session.id)
+  }
+}
+
+/**
+ * Cleans up resources owned by the client, removing users from Session
+ * if an owner disconnects
+ * @param io the socket.io server object
+ * @param socket Client socket that's disconnecting
+ * @param sessionController SessionController with all Sessions
+ */
+export function handleDisconnect(
+  io: Server,
+  socket: Socket,
+  sessionController: SessionController
+): SocketEventHandler<string> {
+  return (reason?: string) => {
+    const session = sessionController.sessions.find(
+      (session) => session.owner === socket.id
+    )
+    debug(`client ${socket.id} is disconnecting; reason: ${reason}`)
+    if (session != null) {
+      debug(`disconnecting client ${socket.id} owns session ${session.id}`)
+      sessionController.removeSession(session)
+
+      const res: events.SessionEndedResponse = {
+        session: session.id,
+      }
+
+      io.to(session.id).emit(events.SessionEnded, res)
+      io.to(session.id).socketsLeave(session.id)
+
+      sessionController.removeSession(session)
+      debug(
+        `session ${session.id} removed, sessions remaining:`,
+        sessionController.sessions.count()
+      )
+    } else {
+      debug(`client ${socket.id} does not own a session`)
+      socket.rooms.forEach((room) => {
+        if (room !== socket.id && sessionController.sessions.has(room)) {
+          const session = sessionController.sessions.get(room)!
+          const user = session.findUserById(socket.id)
+          if (user != null) {
+            debug(`client ${socket.id} leaving room ${room}`)
+            const res: events.UserDisconnectedResponse = {
+              session: session.id,
+              name: user.name,
+            }
+            session.removeUser(user.name)
+            io.to(room).emit(events.UserDisconnected, res)
+          }
+        }
+      })
+    }
   }
 }

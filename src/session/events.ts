@@ -159,6 +159,22 @@ export interface SessionEndFailedResponse {
 }
 
 /**
+ * A user disconnected from the Session
+ */
+export const UserDisconnected = 'user disconnected'
+export interface UserDisconnectedResponse {
+  /**
+   * The session id the user disconnected from
+   */
+  session: string
+
+  /**
+   * The name of user disconnecting
+   */
+  name: string
+}
+
+/**
  * A Session owner is pushing the next question to users
  */
 export const NextQuestion = 'next question'

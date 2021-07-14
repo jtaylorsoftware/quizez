@@ -25,6 +25,11 @@ export class Session {
    */
   private users = Map<string, User>()
 
+  /**
+   * Map of users keyed on user.id
+   */
+  private usersById = Map<string, User>()
+
   private _isStarted: boolean = false
   public get isStarted(): boolean {
     return this._isStarted
@@ -47,6 +52,15 @@ export class Session {
   }
 
   /**
+   * Finds a User in the Session by id
+   * @param id id of User to lookup
+   * @returns the User if found, or undefined
+   */
+  findUserById(id: string): User | undefined {
+    return this.usersById.get(id)
+  }
+
+  /**
    * Adds a user to the Session
    * @param user User joining
    * @returns true if user is added successfully
@@ -61,6 +75,7 @@ export class Session {
       return false
     }
     this.users = this.users.set(user.name, user)
+    this.usersById = this.users.set(user.id, user)
     return true
   }
 
@@ -73,6 +88,7 @@ export class Session {
     const user = this.users.get(name)
     if (user != null && !this.hasEnded) {
       this.users = this.users.delete(user.name)
+      this.usersById = this.usersById.delete(user.id)
       return user
     }
     return undefined
