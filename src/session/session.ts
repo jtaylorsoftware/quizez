@@ -1,4 +1,5 @@
 import { customAlphabet } from 'nanoid'
+import { List, Map } from 'immutable'
 
 const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)
 
@@ -7,16 +8,31 @@ const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)
  */
 export class Session {
   readonly id: string = nanoid()
-  readonly quiz: Quiz = new Quiz()
+
+  private _quiz: Quiz = new Quiz()
+  /**
+   * Gets the Quiz or a copy of the Quiz if Session has ended
+   */
+  get quiz(): Quiz {
+    if (this.hasEnded) {
+      return this._quiz.clone()
+    }
+    return this._quiz
+  }
 
   /**
    * Map of users keyed on user.name
    */
-  private users: Map<string, User> = new Map<string, User>()
+  private users = Map<string, User>()
 
   private _isStarted: boolean = false
   public get isStarted(): boolean {
     return this._isStarted
+  }
+
+  private _hasEnded: boolean = false
+  public get hasEnded(): boolean {
+    return this._hasEnded
   }
 
   constructor(readonly owner: string) {}
@@ -36,10 +52,15 @@ export class Session {
    * @returns true if user is added successfully
    */
   addUser(user: User): boolean {
-    if (user.id === this.owner || this.isStarted || this.users.has(user.name)) {
+    if (
+      user.id === this.owner ||
+      this.isStarted ||
+      this.hasEnded ||
+      this.users.has(user.name)
+    ) {
       return false
     }
-    this.users.set(user.name, user)
+    this.users = this.users.set(user.name, user)
     return true
   }
 
@@ -51,7 +72,7 @@ export class Session {
   removeUser(name: string): User | undefined {
     const user = this.users.get(name)
     if (user != null) {
-      this.users.delete(user.name)
+      this.users = this.users.delete(user.name)
     }
     return user
   }
@@ -63,6 +84,14 @@ export class Session {
   start() {
     this._isStarted = true
   }
+
+  /**
+   * Ends the sesssion, preventing it from being used again for
+   * quizzes, but it will persist until the owner disconnects
+   */
+  end() {
+    this._hasEnded = true
+  }
 }
 
 export class User {
@@ -73,14 +102,14 @@ export class User {
  * A single-Session Quiz that contains multiple questions
  */
 export class Quiz {
-  private questions: Question[] = []
+  private questions = List<Question>()
   private _currentQuestionIndex: number = -1
 
   /**
    * The number of questions in the Quiz
    */
   get numQuestions(): number {
-    return this.questions.length
+    return this.questions.count()
   }
 
   /**
@@ -96,11 +125,11 @@ export class Quiz {
   get currentQuestion(): Question | null {
     if (
       this._currentQuestionIndex < 0 ||
-      this._currentQuestionIndex >= this.questions.length
+      this._currentQuestionIndex >= this.questions.count()
     ) {
       return null
     }
-    return this.questions[this._currentQuestionIndex]!
+    return this.questions.get(this._currentQuestionIndex)!
   }
 
   /**
@@ -108,7 +137,7 @@ export class Quiz {
    * @returns the Question if it exists or undefined
    */
   questionAt(index: number): Question | undefined {
-    return this.questions[index]
+    return this.questions.get(index)
   }
 
   /**
@@ -116,20 +145,31 @@ export class Quiz {
    * @returns the next Question or null if no more Questions
    */
   advanceToNextQuestion(): Question | null {
-    if (this._currentQuestionIndex + 1 >= this.questions.length) {
+    if (this._currentQuestionIndex + 1 >= this.questions.count()) {
       return null
     }
     this._currentQuestionIndex += 1
-    const question = this.questions[this._currentQuestionIndex]!
+    const question = this.questions.get(this._currentQuestionIndex)!
     return question
   }
 
   /**
-   * Adds a question to the Quiz. Questions can be added at any time.
+   * Adds a question to the Quiz.
    * @param question Question to add
    */
   addQuestion(question: Question) {
-    this.questions.push(question)
+    this.questions = this.questions.push(question)
+  }
+
+  /**
+   * Creates a copy of the Quiz
+   * @returns the copy of the Quiz
+   */
+  clone(): Quiz {
+    const copy = new Quiz()
+    copy.questions = this.questions.map((question) => question.clone())
+    copy._currentQuestionIndex = this._currentQuestionIndex
+    return copy
   }
 }
 
@@ -190,9 +230,8 @@ export function responseToString(response: ResponseType): string {
  * A varying-type Question, that could be multiple choice or fill-in
  */
 export class Question {
-  private _responses = new Map<string, ResponseType>()
-  private _frequency = new Map<string, number>()
-  private _numResponses: number = 0
+  private _responses = Map<string, ResponseType>()
+  private _frequency = Map<string, number>()
   private _firstCorrect: string | undefined
 
   /**
@@ -205,15 +244,15 @@ export class Question {
   /**
    * The responses to the Question
    */
-  get responses(): ResponseType[] {
-    return Array.from(this._responses.values())
+  get responses(): List<ResponseType> {
+    return this._responses.valueSeq().toList()
   }
 
   /**
    * The total number of responses
    */
   get numResponses(): number {
-    return this._numResponses
+    return this._responses.count()
   }
 
   /**
@@ -228,22 +267,18 @@ export class Question {
    * The frequency of all responses transformed to percentages of total (aka relative frequency)
    */
   get relativeFrequency(): Map<string, number> {
-    const relativeFrequency = new Map<string, number>()
-    this._frequency.forEach((value, key) => {
-      relativeFrequency.set(key, value / this.numResponses)
-    })
-    return relativeFrequency
+    return this._frequency.map((value) => value / this.numResponses)
   }
 
   constructor(readonly text: string, readonly body: QuestionBodyType) {
     switch (this.body.type) {
       case MultipleChoiceFormat:
         this.body.choices.forEach((_, index) => {
-          this._frequency.set(index.toString(), 0)
+          this._frequency = this._frequency.set(index.toString(), 0)
         })
         break
       case FillInFormat:
-        this._frequency.set(this.body.answer, 0)
+        this._frequency = this._frequency.set(this.body.answer, 0)
         break
     }
   }
@@ -258,13 +293,12 @@ export class Question {
     if (this._responses.has(response.submitter)) {
       throw new Error('Already responded')
     }
-    this._responses.set(response.submitter, response)
+    this._responses = this._responses.set(response.submitter, response)
     const isCorrect = this.gradeResponse(response)
     if (isCorrect && this._firstCorrect == null) {
       this._firstCorrect = response.submitter
     }
     this.updateFrequency(response)
-    this._numResponses += 1
     return isCorrect
   }
 
@@ -297,20 +331,32 @@ export class Question {
     }
   }
 
+  /**
+   * Creates a copy of the Question
+   * @returns the copy of the Question
+   */
+  clone(): Question {
+    const copy = new Question(this.text, this.body)
+    copy._firstCorrect = this._firstCorrect
+    copy._frequency = this._frequency
+    copy._responses = this._responses
+    return copy
+  }
+
   private updateFrequency(response: ResponseType) {
     switch (response.type) {
       case MultipleChoiceFormat:
         {
           const answer = response.choice.toString()
           const prev = this._frequency.get(answer)!
-          this._frequency.set(answer, prev + 1)
+          this._frequency = this._frequency.set(answer, prev + 1)
         }
         break
       case FillInFormat:
         {
           const answer = response.text
           const prev = this._frequency.get(answer) ?? 0
-          this._frequency.set(answer, prev + 1)
+          this._frequency = this._frequency.set(answer, prev + 1)
         }
         break
     }
