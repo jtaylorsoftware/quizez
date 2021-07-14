@@ -3,39 +3,7 @@ import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
 import { MultipleChoiceFormat, Question } from 'session'
-import {
-  AddQuestion,
-  AddQuestionFailed,
-  AddQuestionSuccess,
-  CreatedSession,
-  CreatedSessionResponse,
-  CreateNewSession,
-  EndSession,
-  EndSessionArgs,
-  JoinSession,
-  JoinSessionArgs,
-  JoinSessionFailed,
-  JoinSessionSuccess,
-  NextQuestion,
-  NextQuestionResponse,
-  QuestionResponse,
-  QuestionResponseAdded,
-  QuestionResponseAddedResponse,
-  QuestionResponseArgs,
-  QuestionResponseFailed,
-  QuestionResponseSuccess,
-  QuestionResponseSuccessResponse,
-  SessionEnded,
-  SessionEndedResponse,
-  SessionEndFailed,
-  SessionKick,
-  SessionKickArgs,
-  SessionKickFailed,
-  SessionKickSuccess,
-  SessionKickSuccessResponse,
-  SessionStarted,
-  StartSession,
-} from 'session/events'
+import * as events from 'session/events'
 import { io, Socket } from 'socket.io-client'
 
 describe('Server', () => {
@@ -78,21 +46,24 @@ describe('Server', () => {
     beforeEach((done) => {
       user = io(`http://localhost:${port}`)
       user.on('connect', () => {
-        sessionOwner.emit(CreateNewSession)
+        sessionOwner.emit(events.CreateNewSession)
       })
       user.connect()
 
-      sessionOwner.on(CreatedSession, (res: CreatedSessionResponse) => {
-        id = res.id
-        name = nanoid()
-        const joinArgs: JoinSessionArgs = {
-          id,
-          name,
+      sessionOwner.on(
+        events.CreatedSession,
+        (res: events.CreatedSessionResponse) => {
+          id = res.id
+          name = nanoid()
+          const joinArgs: events.JoinSessionArgs = {
+            id,
+            name,
+          }
+          user.emit(events.JoinSession, joinArgs)
         }
-        user.emit(JoinSession, joinArgs)
-      })
+      )
 
-      user.on(JoinSessionSuccess, () => {
+      user.on(events.JoinSessionSuccess, () => {
         done()
       })
     })
@@ -111,19 +82,19 @@ describe('Server', () => {
       const testUser = io(`http://localhost:${port}`)
       testUser.on('connect', () => {
         const testName = nanoid()
-        const joinArgs: JoinSessionArgs = {
+        const joinArgs: events.JoinSessionArgs = {
           id,
           name: testName,
         }
-        testUser.emit(JoinSession, joinArgs)
+        testUser.emit(events.JoinSession, joinArgs)
       })
       testUser.connect()
 
-      testUser.on(JoinSessionSuccess, () => {
+      testUser.on(events.JoinSessionSuccess, () => {
         testUser.close()
         done()
       })
-      testUser.on(JoinSessionFailed, () => {
+      testUser.on(events.JoinSessionFailed, () => {
         expect(`JoinFailed, session id: ${id}`).toBe('JoinSessionSuccess')
         testUser.close()
         done()
@@ -131,11 +102,11 @@ describe('Server', () => {
     })
 
     it('should allow the session owner to add questions', (done) => {
-      sessionOwner.on(AddQuestionFailed, () => {
+      sessionOwner.on(events.AddQuestionFailed, () => {
         expect('AddQuestionFailed').toBe('AddQuestionSuccess')
         done()
       })
-      sessionOwner.on(AddQuestionSuccess, () => {
+      sessionOwner.on(events.AddQuestionSuccess, () => {
         done()
       })
 
@@ -144,17 +115,17 @@ describe('Server', () => {
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 0,
       })
-      sessionOwner.emit(AddQuestion, {
+      sessionOwner.emit(events.AddQuestion, {
         session: id,
         ...question,
       })
     })
 
     it('should NOT allow other users to add questions', (done) => {
-      user.on(AddQuestionFailed, () => {
+      user.on(events.AddQuestionFailed, () => {
         done()
       })
-      user.on(AddQuestionSuccess, () => {
+      user.on(events.AddQuestionSuccess, () => {
         expect('AddQuestionSuccess').toBe('AddQuestionFailed')
         done()
       })
@@ -165,40 +136,46 @@ describe('Server', () => {
         answer: 1,
       })
 
-      user.emit(AddQuestion, {
+      user.emit(events.AddQuestion, {
         session: id,
         ...question,
       })
     })
 
     it('should broadcast to all users when owner kicks user', (done) => {
-      sessionOwner.on(SessionKickFailed, () => {
+      sessionOwner.on(events.SessionKickFailed, () => {
         expect('SessionKickFailed').toBe('SessionKickSuccess')
         done()
       })
 
       let eventTimeout: NodeJS.Timeout
       let ownerReceive: boolean = false
-      sessionOwner.on(SessionKickSuccess, (res: SessionKickSuccessResponse) => {
-        ownerReceive = true
-        expect(res.name).toBe(name)
-        expect(res.session).toBe(id)
-        if (ownerReceive && userReceive) {
-          clearTimeout(eventTimeout)
-          done()
+      sessionOwner.on(
+        events.SessionKickSuccess,
+        (res: events.SessionKickSuccessResponse) => {
+          ownerReceive = true
+          expect(res.name).toBe(name)
+          expect(res.session).toBe(id)
+          if (ownerReceive && userReceive) {
+            clearTimeout(eventTimeout)
+            done()
+          }
         }
-      })
+      )
 
       let userReceive: boolean = false
-      user.on(SessionKickSuccess, (res: SessionKickSuccessResponse) => {
-        userReceive = true
-        expect(res.name).toBe(name)
-        expect(res.session).toBe(id)
-        if (ownerReceive && userReceive) {
-          clearTimeout(eventTimeout)
-          done()
+      user.on(
+        events.SessionKickSuccess,
+        (res: events.SessionKickSuccessResponse) => {
+          userReceive = true
+          expect(res.name).toBe(name)
+          expect(res.session).toBe(id)
+          if (ownerReceive && userReceive) {
+            clearTimeout(eventTimeout)
+            done()
+          }
         }
-      })
+      )
 
       // Fail if both sockets did not receive SessionKickSuccess
       eventTimeout = setTimeout(() => {
@@ -208,28 +185,28 @@ describe('Server', () => {
         done()
       }, 5000)
 
-      const kickArgs: SessionKickArgs = {
+      const kickArgs: events.SessionKickArgs = {
         name,
         session: id,
       }
-      sessionOwner.emit(SessionKick, kickArgs)
+      sessionOwner.emit(events.SessionKick, kickArgs)
     })
 
     it('should NOT allow other users to kick users', (done) => {
-      user.on(SessionKickFailed, () => {
+      user.on(events.SessionKickFailed, () => {
         done()
       })
 
-      user.on(SessionKickSuccess, () => {
+      user.on(events.SessionKickSuccess, () => {
         expect('SessionKickSuccess').toEqual('SessionKickFailed')
         done()
       })
 
-      const kickArgs: SessionKickArgs = {
+      const kickArgs: events.SessionKickArgs = {
         name,
         session: id,
       }
-      user.emit(SessionKick, kickArgs)
+      user.emit(events.SessionKick, kickArgs)
     })
 
     it('should broadcast to all users when owner starts session', (done) => {
@@ -239,18 +216,18 @@ describe('Server', () => {
         done()
       }, 3000)
 
-      user.on(SessionStarted, () => {
+      user.on(events.SessionStarted, () => {
         clearTimeout(eventTimeout)
         done()
       })
 
-      sessionOwner.emit(StartSession, { session: id })
+      sessionOwner.emit(events.StartSession, { session: id })
     })
 
     it('should broadcast next question to all users', (done) => {
       let eventTimeout: NodeJS.Timeout
-      user.on(SessionStarted, () => {
-        sessionOwner.emit(NextQuestion, {
+      user.on(events.SessionStarted, () => {
+        sessionOwner.emit(events.NextQuestion, {
           session: id,
         })
 
@@ -259,7 +236,7 @@ describe('Server', () => {
           expect('No Event').toBe('NextQuestion')
         }, 4000)
       })
-      user.on(NextQuestion, (args: NextQuestionResponse) => {
+      user.on(events.NextQuestion, (args: events.NextQuestionResponse) => {
         if (args.question.text === question.text) {
           clearTimeout(eventTimeout)
           done()
@@ -272,25 +249,25 @@ describe('Server', () => {
         answer: 1,
       })
 
-      sessionOwner.emit(AddQuestion, {
+      sessionOwner.emit(events.AddQuestion, {
         session: id,
         ...question,
       })
-      sessionOwner.on(AddQuestionSuccess, () => {
-        sessionOwner.emit(StartSession, { session: id })
+      sessionOwner.on(events.AddQuestionSuccess, () => {
+        sessionOwner.emit(events.StartSession, { session: id })
       })
     })
 
     it('should grade responses and send results', (done) => {
-      sessionOwner.on(AddQuestionSuccess, () => {
-        sessionOwner.emit(StartSession, { session: id })
+      sessionOwner.on(events.AddQuestionSuccess, () => {
+        sessionOwner.emit(events.StartSession, { session: id })
       })
-      sessionOwner.on(SessionStarted, () => {
-        sessionOwner.emit(NextQuestion, { session: id })
+      sessionOwner.on(events.SessionStarted, () => {
+        sessionOwner.emit(events.NextQuestion, { session: id })
       })
 
-      user.on(NextQuestion, () => {
-        const response: QuestionResponseArgs = {
+      user.on(events.NextQuestion, () => {
+        const response: events.QuestionResponseArgs = {
           session: id,
           name,
           index: 0,
@@ -300,10 +277,10 @@ describe('Server', () => {
             submitter: name,
           },
         }
-        user.emit(QuestionResponse, response)
+        user.emit(events.QuestionResponse, response)
       })
 
-      user.on(QuestionResponseFailed, () => {
+      user.on(events.QuestionResponseFailed, () => {
         expect('QuestionResponseFailed').toBe('QuestionResponseSuccess')
         done()
       })
@@ -311,8 +288,8 @@ describe('Server', () => {
       let userReceived = false
       let ownerReceived = false
       user.on(
-        QuestionResponseSuccess,
-        (res: QuestionResponseSuccessResponse) => {
+        events.QuestionResponseSuccess,
+        (res: events.QuestionResponseSuccessResponse) => {
           userReceived = true
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
@@ -324,8 +301,8 @@ describe('Server', () => {
         }
       )
       sessionOwner.on(
-        QuestionResponseAdded,
-        (res: QuestionResponseAddedResponse) => {
+        events.QuestionResponseAdded,
+        (res: events.QuestionResponseAddedResponse) => {
           ownerReceived = true
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
@@ -347,7 +324,7 @@ describe('Server', () => {
         answer: 1,
       })
 
-      sessionOwner.emit(AddQuestion, {
+      sessionOwner.emit(events.AddQuestion, {
         session: id,
         ...question,
       })
@@ -357,33 +334,36 @@ describe('Server', () => {
       let ownerReceived = false
       let userReceived = false
 
-      sessionOwner.on(SessionEnded, (args: SessionEndedResponse) => {
-        ownerReceived = true
-        expect(args.session).toBe(id)
-        if (ownerReceived && userReceived) {
-          done()
+      sessionOwner.on(
+        events.SessionEnded,
+        (args: events.SessionEndedResponse) => {
+          ownerReceived = true
+          expect(args.session).toBe(id)
+          if (ownerReceived && userReceived) {
+            done()
+          }
         }
-      })
-      user.on(SessionEnded, (args: SessionEndedResponse) => {
+      )
+      user.on(events.SessionEnded, (args: events.SessionEndedResponse) => {
         userReceived = true
         expect(args.session).toBe(id)
         if (ownerReceived && userReceived) {
           done()
         }
       })
-      sessionOwner.on(SessionEndFailed, () => {
+      sessionOwner.on(events.SessionEndFailed, () => {
         expect('SessionEndFailed').toBe('SessionEnded')
         done()
       })
-      user.on(SessionEndFailed, () => {
+      user.on(events.SessionEndFailed, () => {
         expect('SessionEndFailed').toBe('SessionEnded')
         done()
       })
 
-      const args: EndSessionArgs = {
+      const args: events.EndSessionArgs = {
         session: id,
       }
-      sessionOwner.emit(EndSession, args)
+      sessionOwner.emit(events.EndSession, args)
     })
   })
 })
