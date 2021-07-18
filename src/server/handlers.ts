@@ -189,6 +189,15 @@ export function startSession(
       return
     }
 
+    if (session.isStarted) {
+      debug(`session ${session.id} is already started`)
+      const res: events.SessionStartFailedResponse = {
+        session: args.session,
+      }
+      socket.emit(events.SessionStartFailed, res)
+      return
+    }
+
     debug(`session ${session.id} starting`)
     session.start()
 
@@ -366,6 +375,15 @@ export function endSession(
       debug(
         `could not find session ${args.session} with owner ${socket.id} to end`
       )
+      const res: events.SessionEndFailedResponse = {
+        session: args.session,
+      }
+      socket.emit(events.SessionEndFailed, res)
+      return
+    }
+
+    if (session.hasEnded) {
+      debug(`session ${args.session} already ended`)
       const res: events.SessionEndFailedResponse = {
         session: args.session,
       }

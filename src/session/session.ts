@@ -107,7 +107,9 @@ export class Session {
    * quizzes, but it will persist until the owner disconnects
    */
   end() {
-    this._hasEnded = true
+    if (this._isStarted) {
+      this._hasEnded = true
+    }
   }
 }
 
