@@ -80,8 +80,8 @@ describe('Server', () => {
 
     it('should allow clients to join using existing id', (done) => {
       const testUser = io(`http://localhost:${port}`)
+      const testName = nanoid(4)
       testUser.on('connect', () => {
-        const testName = nanoid(4)
         const joinArgs: events.JoinSessionArgs = {
           id,
           name: testName,
@@ -90,10 +90,15 @@ describe('Server', () => {
       })
       testUser.connect()
 
-      testUser.on(events.JoinSessionSuccess, () => {
-        testUser.close()
-        done()
-      })
+      testUser.on(
+        events.JoinSessionSuccess,
+        (res: events.JoinSessionSuccessResponse) => {
+          expect(res.session).toBe(id)
+          expect(res.name).toBe(testName)
+          testUser.close()
+          done()
+        }
+      )
       testUser.on(events.JoinSessionFailed, () => {
         expect(`JoinFailed, session id: ${id}`).toBe('JoinSessionSuccess')
         testUser.close()

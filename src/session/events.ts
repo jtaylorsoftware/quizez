@@ -46,7 +46,17 @@ export interface JoinSessionArgs {
  * The server successfully added the client to the session
  */
 export const JoinSessionSuccess = 'join success'
-export type JoinSessionSuccessResponse = void
+export type JoinSessionSuccessResponse = {
+  /**
+   * The id of the session that was joined
+   */
+  session: string
+
+  /**
+   * The name of the user joining
+   */
+  name: string
+}
 
 /**
  * The server could not add the client to the session

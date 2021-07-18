@@ -68,7 +68,7 @@ function configure(io: Server) {
 
     socket.on(CreateNewSession, createSession(socket, sessionController))
 
-    socket.on(JoinSession, addUserToSession(socket, sessionController))
+    socket.on(JoinSession, addUserToSession(io, socket, sessionController))
 
     socket.on(AddQuestion, addQuestionToSession(socket, sessionController))
 

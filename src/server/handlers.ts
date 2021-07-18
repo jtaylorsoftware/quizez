@@ -31,10 +31,12 @@ export function createSession(
 /**
  * Adds a client socket to a Session, if it exists, and if the
  * client id is not the owner
+ * @param io the socket.io server object
  * @param socket Client socket joining the Session
  * @param sessionController SessionController with all Sessions
  */
 export function addUserToSession(
+  io: Server,
   socket: Socket,
   sessionController: SessionController
 ): SocketEventHandler<events.JoinSessionArgs> {
@@ -56,7 +58,12 @@ export function addUserToSession(
     } else {
       if (session.addUser(new User(args.name, socket.id))) {
         socket.join(session.id)
-        socket.emit(events.JoinSessionSuccess)
+        // Broadcast that a user has joined
+        const res: events.JoinSessionSuccessResponse = {
+          session: session.id,
+          name: args.name,
+        }
+        io.to(session.id).emit(events.JoinSessionSuccess, res)
       } else {
         socket.emit(events.JoinSessionFailed)
       }
