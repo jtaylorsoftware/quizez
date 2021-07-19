@@ -231,6 +231,8 @@ describe('Server', () => {
 
     it('should broadcast next question to all users', (done) => {
       let eventTimeout: NodeJS.Timeout
+      let userReceived = false
+      let ownerReceived = false
       user.on(events.SessionStarted, () => {
         sessionOwner.emit(events.NextQuestion, {
           session: id,
@@ -241,12 +243,6 @@ describe('Server', () => {
           expect('No Event').toBe('NextQuestion')
         }, 2000)
       })
-      user.on(events.NextQuestion, (res: events.NextQuestionResponse) => {
-        if (res.question.text === question.text) {
-          clearTimeout(eventTimeout)
-          done()
-        }
-      })
 
       const question: Question = new Question('Question', {
         type: MultipleChoiceFormat,
@@ -254,12 +250,34 @@ describe('Server', () => {
         answer: 1,
       })
 
+      user.on(events.NextQuestion, (res: events.NextQuestionResponse) => {
+        if (res.question.text === question.text) {
+          userReceived = true
+          if (userReceived && ownerReceived) {
+            clearTimeout(eventTimeout)
+            done()
+          }
+        }
+      })
+
+      sessionOwner.on(events.AddQuestionSuccess, () => {
+        sessionOwner.emit(events.StartSession, { session: id })
+      })
+      sessionOwner.on(
+        events.NextQuestion,
+        (res: events.NextQuestionResponse) => {
+          if (res.question.text === question.text) {
+            ownerReceived = true
+            if (userReceived && ownerReceived) {
+              clearTimeout(eventTimeout)
+              done()
+            }
+          }
+        }
+      )
       sessionOwner.emit(events.AddQuestion, {
         session: id,
         ...question,
-      })
-      sessionOwner.on(events.AddQuestionSuccess, () => {
-        sessionOwner.emit(events.StartSession, { session: id })
       })
     })
 

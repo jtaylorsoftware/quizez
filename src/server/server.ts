@@ -78,7 +78,7 @@ function configure(io: Server) {
 
     socket.on(EndSession, endSession(io, socket, sessionController))
 
-    socket.on(NextQuestion, pushNextQuestion(socket, sessionController))
+    socket.on(NextQuestion, pushNextQuestion(io, socket, sessionController))
 
     socket.on(QuestionResponse, addQuestionResponse(io, socket, sessionController))
 

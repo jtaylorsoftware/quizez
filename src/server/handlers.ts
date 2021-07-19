@@ -217,10 +217,12 @@ export function startSession(
 
 /**
  * Pushes the next question to users
+ * @param io the socket.io server object
  * @param socket Client socket owning the Session
  * @param sessionController SessionController with all Sessions
  */
 export function pushNextQuestion(
+  io: Server,
   socket: Socket,
   sessionController: SessionController
 ): SocketEventHandler<events.NextQuestionArgs> {
@@ -254,7 +256,7 @@ export function pushNextQuestion(
       question: nextQuestion,
     }
 
-    socket.to(session.id).emit(events.NextQuestion, res)
+    io.to(session.id).emit(events.NextQuestion, res)
   }
 }
 
