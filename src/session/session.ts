@@ -226,7 +226,7 @@ export interface MultipleChoiceResponse {
    * The name of the user submitting the response
    */
   submitter: string
-  choice: number
+  answer: number
 }
 
 export interface FillInResponse {
@@ -235,16 +235,16 @@ export interface FillInResponse {
    * The name of the user submitting the response
    */
   submitter: string
-  text: string
+  answer: string
 }
 
 export type ResponseType = MultipleChoiceResponse | FillInResponse
 export function responseToString(response: ResponseType): string {
   switch (response.type) {
     case MultipleChoiceFormat:
-      return response.choice.toString()
+      return response.answer.toString()
     case FillInFormat:
-      return response.text
+      return response.answer
     default:
       return ''
   }
@@ -343,11 +343,11 @@ export class Question {
   frequencyOf(response: ResponseType): number {
     switch (response.type) {
       case MultipleChoiceFormat: {
-        const answer = response.choice.toString()
+        const answer = response.answer.toString()
         return this._frequency.get(answer)!
       }
       case FillInFormat: {
-        const answer = response.text
+        const answer = response.answer
         return this._frequency.get(answer) ?? 0
       }
       default:
@@ -371,14 +371,14 @@ export class Question {
     switch (response.type) {
       case MultipleChoiceFormat:
         {
-          const answer = response.choice.toString()
+          const answer = response.answer.toString()
           const prev = this._frequency.get(answer)!
           this._frequency = this._frequency.set(answer, prev + 1)
         }
         break
       case FillInFormat:
         {
-          const answer = response.text
+          const answer = response.answer
           const prev = this._frequency.get(answer) ?? 0
           this._frequency = this._frequency.set(answer, prev + 1)
         }
@@ -394,10 +394,10 @@ export class Question {
     switch (response.type) {
       case MultipleChoiceFormat:
         const mcQuestion = this.body as MultipleChoice
-        return response.choice === mcQuestion.answer
+        return response.answer === mcQuestion.answer
       case FillInFormat:
         const fillInQuestion = this.body as FillIn
-        return response.text === fillInQuestion.answer
+        return response.answer === fillInQuestion.answer
     }
   }
 

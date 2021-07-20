@@ -296,7 +296,7 @@ describe('Server', () => {
           index: 0,
           response: {
             type: MultipleChoiceFormat,
-            choice: 1,
+            answer: 1,
             submitter: name,
           },
         }
