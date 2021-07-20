@@ -122,7 +122,7 @@ describe('Server', () => {
       })
       sessionOwner.emit(events.AddQuestion, {
         session: id,
-        ...question,
+        question,
       })
     })
 
@@ -143,7 +143,7 @@ describe('Server', () => {
 
       user.emit(events.AddQuestion, {
         session: id,
-        ...question,
+        question,
       })
     })
 
@@ -277,7 +277,7 @@ describe('Server', () => {
       )
       sessionOwner.emit(events.AddQuestion, {
         session: id,
-        ...question,
+        question,
       })
     })
 
@@ -349,7 +349,7 @@ describe('Server', () => {
 
       sessionOwner.emit(events.AddQuestion, {
         session: id,
-        ...question,
+        question,
       })
     })
 
@@ -457,7 +457,7 @@ describe('Server', () => {
 
       sessionOwner.emit(events.AddQuestion, {
         session: id,
-        ...question,
+        question,
       })
     })
   })

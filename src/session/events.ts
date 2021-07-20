@@ -1,4 +1,4 @@
-import { Question, QuestionBodyType, ResponseType } from './session'
+import { Question, QuestionSubmission, ResponseType } from './session'
 
 /**
  * Events between server & client - arguments coming inn
@@ -219,14 +219,9 @@ export interface AddQuestionArgs {
   session: string | undefined
 
   /**
-   * The Question text
+   * The Question to add
    */
-  text: string | undefined
-
-  /**
-   * The Question body
-   */
-  body: QuestionBodyType | undefined
+  question: QuestionSubmission
 }
 
 /**

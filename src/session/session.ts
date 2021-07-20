@@ -196,6 +196,11 @@ export const MultipleChoiceFormat = 'MultipleChoice'
 export const FillInFormat = 'FillIn'
 export type QuestionFormat = typeof MultipleChoiceFormat | typeof FillInFormat
 
+export interface QuestionSubmission {
+  text: string | undefined
+  body: QuestionBodyType | undefined
+}
+
 export interface MultipleChoiceAnswer {
   text: string
 }

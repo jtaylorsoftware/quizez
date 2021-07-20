@@ -87,27 +87,24 @@ export function addQuestionToSession(
       return
     }
 
-    debug(
-      `client ${socket.id} adding question to a session:\n`,
-      'text:',
-      args.text,
-      '\n',
-      'body:',
-      args.body
-    )
     const session = sessionController.sessions.get(args.session ?? '')
     if (session == null || session.owner !== socket.id) {
       debug(`client ${socket.id} was not owner of any session`)
       socket.emit(events.AddQuestionFailed)
     } else {
       debug(`client owns session ${session.id}`)
-      if (args.text == null || args.body == null) {
-        debug('question has missing fields')
+      if (
+        args.question == null ||
+        args.question.text == null ||
+        args.question.body == null
+      ) {
+        debug('question was missing or missing fields')
         socket.emit(events.AddQuestionFailed)
         return
       }
 
-      const question = new Question(args.text, args.body)
+      const { text, body } = args.question
+      const question = new Question(text, body)
       if (!Question.validateQuestion(question)) {
         debug('question has invalid format')
         socket.emit(events.AddQuestionFailed)
