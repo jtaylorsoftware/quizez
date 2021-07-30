@@ -2,7 +2,7 @@ import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
-import { MultipleChoiceFormat, Question } from 'session'
+import { MultipleChoiceFormat, Question } from 'session/quiz'
 import * as events from 'session/events'
 import { io, Socket } from 'socket.io-client'
 

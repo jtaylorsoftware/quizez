@@ -12,7 +12,7 @@ import {
 import { Server } from 'socket.io'
 import { SessionController } from './controller'
 
-const debug = require('debug')('server')
+const debug = require('debug')('app:server')
 
 /**
  * Sets up the socket.io server event handlers

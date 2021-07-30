@@ -1,4 +1,4 @@
-import { Question, QuestionSubmission, ResponseType } from './session'
+import { Question, QuestionSubmission, ResponseType } from './quiz'
 
 /**
  * Events between server & client - arguments coming inn

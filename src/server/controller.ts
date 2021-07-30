@@ -1,9 +1,11 @@
-import { Question, responseToString, Session, User } from 'session'
+import { Session } from 'session'
 import * as events from 'session/events'
 import { Socket, Server } from 'socket.io'
 import { Map } from 'immutable'
+import { User } from 'session/user'
+import { Question, responseToString } from 'session/quiz'
 
-const debug = require('debug')('controller')
+const debug = require('debug')('app:controller')
 
 type SocketEventHandler<T> = (args?: T) => void
 
@@ -308,7 +310,7 @@ export class SessionController {
         args.index == null ||
         args.index < 0 ||
         args.index >= session.quiz.numQuestions ||
-        args.index > session.quiz.currentQuestionIndex
+        args.index !== session.quiz.currentQuestionIndex
       ) {
         debug(
           `could not respond to session ${session.id} - args.index (${args.index}) out of range`
