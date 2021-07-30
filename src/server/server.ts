@@ -1,5 +1,4 @@
 import { createServer, Server as HttpServer } from 'http'
-import { Session } from 'session'
 import {
   JoinSession,
   CreateNewSession,
@@ -11,50 +10,7 @@ import {
   EndSession,
 } from 'session/events'
 import { Server } from 'socket.io'
-import {
-  addUserToSession,
-  createSession,
-  addQuestionToSession,
-  removeUserFromSession,
-  startSession,
-  pushNextQuestion,
-  addQuestionResponse,
-  endSession,
-  handleDisconnect,
-} from './handlers'
-import { Map } from 'immutable'
-
-/**
- * Manages adding and removing sessions
- */
-export class SessionController {
-  private _sessions = Map<string, Session>()
-
-  /**
-   * The current Sessions, keyed on Session.id
-   */
-  get sessions(): Map<string, Session> {
-    return this._sessions
-  }
-
-  /**
-   * Adds a Session
-   * @param session Session to add
-   */
-  addSession(session: Session) {
-    this._sessions = this._sessions.set(session.id, session)
-  }
-
-  /**
-   * Removes a Session
-   * @param session Session to remove
-   */
-  removeSession(session: Session) {
-    this._sessions = this._sessions.delete(session.id)
-  }
-}
-
-const sessionController = new SessionController()
+import { SessionController } from './controller'
 
 const debug = require('debug')('server')
 
@@ -63,26 +19,27 @@ const debug = require('debug')('server')
  */
 // prettier-ignore
 function configure(io: Server) {
+  const sessionController = new SessionController(io)
   io.on('connection', (socket) => {
     debug('received socket connection')
 
-    socket.on(CreateNewSession, createSession(socket, sessionController))
+    socket.on(CreateNewSession, sessionController.createSession(socket))
 
-    socket.on(JoinSession, addUserToSession(io, socket, sessionController))
+    socket.on(JoinSession, sessionController.addUserToSession(socket))
 
-    socket.on(AddQuestion, addQuestionToSession(socket, sessionController))
+    socket.on(AddQuestion, sessionController.addQuestionToSession(socket))
 
-    socket.on(SessionKick, removeUserFromSession(io, socket, sessionController))
+    socket.on(SessionKick, sessionController.removeUserFromSession(socket))
 
-    socket.on(StartSession, startSession(io, socket, sessionController))
+    socket.on(StartSession, sessionController.startSession(socket))
 
-    socket.on(EndSession, endSession(io, socket, sessionController))
+    socket.on(EndSession, sessionController.endSession(socket))
 
-    socket.on(NextQuestion, pushNextQuestion(io, socket, sessionController))
+    socket.on(NextQuestion, sessionController.pushNextQuestion(socket))
 
-    socket.on(QuestionResponse, addQuestionResponse(io, socket, sessionController))
+    socket.on(QuestionResponse, sessionController.addQuestionResponse(socket))
 
-    socket.on('disconnecting', handleDisconnect(io, socket, sessionController))
+    socket.on('disconnecting', sessionController.handleDisconnect(socket))
   })
 }
 
