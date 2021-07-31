@@ -462,5 +462,60 @@ describe('Server', () => {
         question,
       })
     })
+
+    it('should allow session owner to end question', (done) => {
+      let eventTimeout: NodeJS.Timeout
+      let userReceived = false
+      let ownerReceived = false
+
+      user.on(events.SessionStarted, () => {
+        sessionOwner.emit(events.NextQuestion, {
+          session: id,
+        })
+      })
+
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      user.on(events.QuestionEnded, () => {
+        userReceived = true
+        if (userReceived && ownerReceived) {
+          clearTimeout(eventTimeout)
+          done()
+        }
+      })
+
+      sessionOwner.on(events.AddQuestionSuccess, () => {
+        sessionOwner.emit(events.StartSession, { session: id })
+      })
+      sessionOwner.on(events.NextQuestion, () => {
+        const args: requests.EndQuestionArgs = {
+          session: id,
+          question: 0,
+        }
+        sessionOwner.emit(events.EndQuestion, args)
+
+        // Fail if QuestionEnded is not received
+        eventTimeout = setTimeout(() => {
+          expect('No Event').toBe('QuestionEnded')
+        }, 2000)
+      })
+
+      sessionOwner.on(events.QuestionEnded, () => {
+        ownerReceived = true
+        if (userReceived && ownerReceived) {
+          clearTimeout(eventTimeout)
+          done()
+        }
+      })
+
+      sessionOwner.emit(events.AddQuestion, {
+        session: id,
+        question,
+      })
+    })
   })
 })

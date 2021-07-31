@@ -53,6 +53,7 @@ export class Quiz {
     }
     this._currentQuestionIndex += 1
     const question = this.questions.get(this._currentQuestionIndex)!
+    question.start()
     return question
   }
 

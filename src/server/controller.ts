@@ -439,17 +439,51 @@ export class SessionController {
    * Ends the current Question, making it so users cannot respond.
    * @param socket The socket that owns the Session and sent the event.
    */
-  // endCurrentQuestion(
-  //   socket: Socket
-  // ): SocketEventHandler<requests.EndQuestionArgs> {
-  //   return (args?: requests.EndQuestionArgs) => {
-  //     if (args == null) {
-  //       debug('no args passed to endSession')
-  //       this.emit(socket, new responses.EndQuestionFailedResponse())
-  //       return
-  //     }
-  //   }
-  // }
+  endCurrentQuestion(
+    socket: Socket
+  ): SocketEventHandler<requests.EndQuestionArgs> {
+    return (args?: requests.EndQuestionArgs) => {
+      if (args == null) {
+        debug('no args passed to endCurrentQuestion')
+        this.emit(socket, new responses.EndQuestionFailedResponse())
+        return
+      }
+
+      const session = this.sessions.get(args.session ?? '')
+      if (session == null || session.owner !== socket.id) {
+        debug(
+          `could not find session ${args.session} with owner ${socket.id} to end question`
+        )
+        this.emit(socket, new responses.EndQuestionFailedResponse(session?.id))
+        return
+      }
+
+      if (!session.isStarted || session.hasEnded) {
+        debug(`session ${args.session} is not ready`)
+        this.emit(socket, new responses.EndQuestionFailedResponse(session.id))
+        return
+      }
+
+      const currentQuestion = session.quiz.currentQuestion
+      const currentIndex = session.quiz.currentQuestionIndex
+      if (currentQuestion == null || currentIndex !== args.question) {
+        debug(
+          `session ${args.session} quiz is not on the argument question index ${args.question}`
+        )
+        this.emit(socket, new responses.EndQuestionFailedResponse(session.id))
+        return
+      }
+
+      // End the question
+      currentQuestion.end()
+
+      // Broadcast to users that question ended
+      this.emit(
+        session.id,
+        new responses.QuestionEndedResponse(session.id, currentIndex)
+      )
+    }
+  }
 
   /**
    * Cleans up resources owned by the client, removing users from Session

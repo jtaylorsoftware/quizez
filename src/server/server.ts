@@ -8,6 +8,7 @@ import {
   NextQuestion,
   QuestionResponse,
   EndSession,
+  EndQuestion,
 } from 'event'
 import { Server } from 'socket.io'
 import { SessionController } from './controller'
@@ -38,6 +39,8 @@ function configure(io: Server) {
     socket.on(NextQuestion, sessionController.pushNextQuestion(socket))
 
     socket.on(QuestionResponse, sessionController.addQuestionResponse(socket))
+
+    socket.on(EndQuestion, sessionController.endCurrentQuestion(socket))
 
     socket.on('disconnecting', sessionController.handleDisconnect(socket))
   })

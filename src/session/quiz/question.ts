@@ -15,6 +15,22 @@ export class Question {
   private _responses = Map<string, ResponseType>()
   private _frequency = Map<string, number>()
   private _firstCorrect: string | undefined
+  private _isStarted: boolean = false
+  private _hasEnded: boolean = false
+
+  /**
+   * True if the Question has started (been sent to users), so it will accept responses
+   */
+  get isStarted(): boolean {
+    return this._isStarted
+  }
+
+  /**
+   * True if the Question has ended, in which case it won't accept responses
+   */
+  get hasEnded(): boolean {
+    return this._hasEnded
+  }
 
   /**
    * The first submitter to answer correctly
@@ -66,12 +82,34 @@ export class Question {
   }
 
   /**
+   * Opens the question to responses
+   */
+  start() {
+    this._isStarted = true
+  }
+
+  /**
+   * Closes off responses
+   */
+  end() {
+    if (this._isStarted) {
+      this._hasEnded = true
+    }
+  }
+
+  /**
    * Adds a Response if its type is the same as the Question
    * @param response Response to add
    * @returns the grade of the Response (correct or incorrect)
-   * @throws Error thrown if user already responded
+   * @throws Error thrown if user already responded or if the question has ended or has not started
    */
   addResponse(response: ResponseType): boolean {
+    if (!this._isStarted) {
+      throw new Error('Question has not started')
+    }
+    if (this._hasEnded) {
+      throw new Error('Question has ended')
+    }
     if (this._responses.has(response.submitter)) {
       throw new Error('Already responded')
     }

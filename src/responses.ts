@@ -242,12 +242,6 @@ export class EndQuestionFailedResponse extends EventResponse {
   }
 }
 
-export class EndQuestionSuccessResponse extends EventResponse {
-  constructor(session: string, readonly question: number) {
-    super(EndQuestionFailed, session)
-  }
-}
-
 export class QuestionEndedResponse extends EventResponse {
   constructor(
     session: string,
