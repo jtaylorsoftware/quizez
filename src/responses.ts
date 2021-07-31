@@ -1,26 +1,17 @@
-import {
-  CreatedSession,
-  JoinSessionFailed,
-  JoinSessionSuccess,
-  SessionKickSuccess,
-  SessionKickFailed,
-  SessionStarted,
-  SessionEnded,
-  SessionEndFailed,
-  UserDisconnected,
-  EndQuestionFailed,
-  QuestionEnded,
-  NextQuestionFailed,
-  NextQuestion,
-  AddQuestionFailed,
-  AddQuestionSuccess,
-  QuestionResponseFailed,
-  QuestionResponseSuccess,
-  QuestionResponseAdded,
-  SessionStartFailed,
-} from 'event'
+import * as events from 'event'
 import { Question } from 'session/quiz'
 
+/**
+ *
+ *
+ * Responses being sent to clients
+ *
+ *
+ */
+
+/**
+ *
+ */
 export class EventResponse {
   readonly event: string
   readonly session: string
@@ -30,19 +21,19 @@ export class EventResponse {
   }
 }
 
-export class CreatedSessionResponse extends EventResponse {
+export class CreateSessionSuccess extends EventResponse {
   constructor(session: string) {
-    super(CreatedSession, session)
+    super(events.CreatedSession, session)
   }
 }
 
-export class JoinSessionFailedResponse extends EventResponse {
+export class JoinSessionFailed extends EventResponse {
   constructor(session?: string) {
-    super(JoinSessionFailed, session)
+    super(events.JoinSessionFailed, session)
   }
 }
 
-export class JoinSessionSuccessResponse extends EventResponse {
+export class JoinSessionSuccess extends EventResponse {
   constructor(
     session: string,
 
@@ -51,11 +42,11 @@ export class JoinSessionSuccessResponse extends EventResponse {
      */
     readonly name: string
   ) {
-    super(JoinSessionSuccess, session)
+    super(events.JoinSessionSuccess, session)
   }
 }
 
-export class SessionKickSuccessResponse extends EventResponse {
+export class SessionKickSuccess extends EventResponse {
   constructor(
     session: string,
 
@@ -64,41 +55,41 @@ export class SessionKickSuccessResponse extends EventResponse {
      */
     readonly name: string
   ) {
-    super(SessionKickSuccess, session)
+    super(events.SessionKickSuccess, session)
   }
 }
 
-export class SessionKickFailedResponse extends EventResponse {
+export class SessionKickFailed extends EventResponse {
   constructor(session?: string) {
-    super(SessionKickFailed, session)
+    super(events.SessionKickFailed, session)
   }
 }
 
-export class SessionStartedResponse extends EventResponse {
+export class SessionStartedSuccess extends EventResponse {
   constructor(session: string) {
-    super(SessionStarted, session)
+    super(events.SessionStarted, session)
   }
 }
 
-export class SessionStartFailedResponse extends EventResponse {
+export class SessionStartFailed extends EventResponse {
   constructor(session?: string) {
-    super(SessionStartFailed, session)
+    super(events.SessionStartFailed, session)
   }
 }
 
-export class SessionEndedResponse extends EventResponse {
+export class SessionEndedSuccess extends EventResponse {
   constructor(session: string) {
-    super(SessionEnded, session)
+    super(events.SessionEnded, session)
   }
 }
 
-export class SessionEndFailedResponse extends EventResponse {
+export class SessionEndFailed extends EventResponse {
   constructor(session?: string) {
-    super(SessionEndFailed, session)
+    super(events.SessionEndFailed, session)
   }
 }
 
-export class UserDisconnectedResponse extends EventResponse {
+export class UserDisconnected extends EventResponse {
   constructor(
     session: string,
 
@@ -107,11 +98,11 @@ export class UserDisconnectedResponse extends EventResponse {
      */
     readonly name: string
   ) {
-    super(UserDisconnected, session)
+    super(events.UserDisconnected, session)
   }
 }
 
-export class NextQuestionFailedResponse extends EventResponse {
+export class NextQuestionFailed extends EventResponse {
   readonly numQuestions: number
   readonly currentIndex: number
   constructor(
@@ -127,13 +118,13 @@ export class NextQuestionFailedResponse extends EventResponse {
      */
     currentIndex?: number
   ) {
-    super(NextQuestionFailed, session)
+    super(events.NextQuestionFailed, session)
     this.numQuestions = numQuestions ?? -1
     this.currentIndex = currentIndex ?? -1
   }
 }
 
-export class NextQuestionResponse extends EventResponse {
+export class NextQuestion extends EventResponse {
   constructor(
     session: string,
 
@@ -147,30 +138,30 @@ export class NextQuestionResponse extends EventResponse {
      */
     readonly question: Question
   ) {
-    super(NextQuestion, session)
+    super(events.NextQuestion, session)
   }
 }
 
 // TODO - ? Give useful info for retries
-export class AddQuestionFailedResponse extends EventResponse {
+export class AddQuestionFailed extends EventResponse {
   constructor(session?: string) {
-    super(AddQuestionFailed, session)
+    super(events.AddQuestionFailed, session)
   }
 }
 
-export class AddQuestionSuccessResponse extends EventResponse {
+export class AddQuestionSuccess extends EventResponse {
   constructor(session: string) {
-    super(AddQuestionSuccess, session)
+    super(events.AddQuestionSuccess, session)
   }
 }
 
-export class QuestionResponseFailedResponse extends EventResponse {
+export class QuestionResponseFailed extends EventResponse {
   constructor(session?: string) {
-    super(QuestionResponseFailed, session)
+    super(events.QuestionResponseFailed, session)
   }
 }
 
-export class QuestionResponseSuccessResponse extends EventResponse {
+export class QuestionResponseSuccess extends EventResponse {
   constructor(
     session: string,
 
@@ -189,11 +180,11 @@ export class QuestionResponseSuccessResponse extends EventResponse {
      */
     readonly isCorrect: boolean
   ) {
-    super(QuestionResponseSuccess, session)
+    super(events.QuestionResponseSuccess, session)
   }
 }
 
-export class QuestionResponseAddedResponse extends EventResponse {
+export class QuestionResponseAdded extends EventResponse {
   constructor(
     session: string,
 
@@ -232,17 +223,17 @@ export class QuestionResponseAddedResponse extends EventResponse {
      */
     readonly relativeFrequency: number
   ) {
-    super(QuestionResponseAdded, session)
+    super(events.QuestionResponseAdded, session)
   }
 }
 
-export class EndQuestionFailedResponse extends EventResponse {
+export class EndQuestionFailed extends EventResponse {
   constructor(session?: string, readonly question?: number) {
-    super(EndQuestionFailed, session)
+    super(events.EndQuestionFailed, session)
   }
 }
 
-export class QuestionEndedResponse extends EventResponse {
+export class QuestionEndedSuccess extends EventResponse {
   constructor(
     session: string,
 
@@ -251,6 +242,6 @@ export class QuestionEndedResponse extends EventResponse {
      */
     readonly question: number
   ) {
-    super(QuestionEnded, session)
+    super(events.QuestionEnded, session)
   }
 }

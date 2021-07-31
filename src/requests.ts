@@ -1,8 +1,19 @@
 import { QuestionSubmission, ResponseType } from 'session/quiz'
 
-export interface CreateNewSessionArgs {}
+/**
+ *
+ *
+ * Request arguments coming from clients.
+ *
+ *
+ */
 
-export interface JoinSessionArgs {
+/**
+ *
+ */
+export interface CreateNewSession {}
+
+export interface JoinSession {
   /**
    * The generated id of the session
    */
@@ -14,7 +25,7 @@ export interface JoinSessionArgs {
   name: string | undefined
 }
 
-export interface SessionKickArgs {
+export interface SessionKick {
   /**
    * The id of the session
    */
@@ -26,21 +37,21 @@ export interface SessionKickArgs {
   name: string | undefined
 }
 
-export interface SessionStartArgs {
+export interface SessionStart {
   /**
    * The session to start
    */
   session: string | undefined
 }
 
-export interface EndSessionArgs {
+export interface EndSession {
   /**
    * The session to end
    */
   session: string | undefined
 }
 
-export interface EndQuestionArgs {
+export interface EndQuestion {
   /**
    * The id of the session
    */
@@ -52,14 +63,14 @@ export interface EndQuestionArgs {
   question: number | undefined
 }
 
-export interface NextQuestionArgs {
+export interface NextQuestion {
   /**
    * The id of the session this applies to
    */
   session: string | undefined
 }
 
-export interface AddQuestionArgs {
+export interface AddQuestion {
   /**
    * The id of the session to add to
    */
@@ -71,7 +82,7 @@ export interface AddQuestionArgs {
   question: QuestionSubmission | undefined
 }
 
-export class QuestionResponseArgs {
+export class QuestionResponse {
   /**
    * The id of the session containing the Question
    */

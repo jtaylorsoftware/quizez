@@ -1,8 +1,8 @@
 /**
- * Events between server & client - arguments coming inn
- * from client requests are represented by interfaces ending
- * in "Args." Responses from server to client are
- * represented by interfaces or types ending in "Response."
+ *
+ *
+ * Events between server & client
+ *
  *
  */
 
