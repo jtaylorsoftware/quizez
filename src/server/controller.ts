@@ -1,9 +1,10 @@
-import { Session } from 'session'
-import * as events from 'session/events'
-import { Socket, Server } from 'socket.io'
 import { Map } from 'immutable'
-import { User } from 'session/user'
+import * as requests from 'requests'
+import * as responses from 'responses'
+import { Session } from 'session'
 import { Question, responseToString } from 'session/quiz'
+import { User } from 'session/user'
+import { Server, Socket } from 'socket.io'
 
 const debug = require('debug')('app:controller')
 
@@ -50,16 +51,15 @@ export class SessionController {
    */
   createSession(
     socket: Socket
-  ): SocketEventHandler<events.CreateNewSessionArgs> {
+  ): SocketEventHandler<requests.CreateNewSessionArgs> {
     return () => {
       const session = new Session(socket.id)
       debug(`client ${socket.id} creating session with id ${session.id}`)
-      const res: events.CreatedSessionResponse = {
-        id: session.id,
-      }
+
       this.addSession(session)
+
       socket.join(session.id)
-      socket.emit(events.CreatedSession, res)
+      this.emit(socket, new responses.CreatedSessionResponse(session.id))
     }
   }
 
@@ -68,11 +68,13 @@ export class SessionController {
    * client id is not the owner
    * @param socket Client socket joining the Session
    */
-  addUserToSession(socket: Socket): SocketEventHandler<events.JoinSessionArgs> {
-    return (args?: events.JoinSessionArgs) => {
+  addUserToSession(
+    socket: Socket
+  ): SocketEventHandler<requests.JoinSessionArgs> {
+    return (args?: requests.JoinSessionArgs) => {
       if (args == null) {
         debug('no args passed to addUserToSession')
-        socket.emit(events.JoinSessionFailed)
+        this.emit(socket, new responses.JoinSessionFailedResponse())
         return
       }
 
@@ -80,21 +82,20 @@ export class SessionController {
         `client ${socket.id} joining session ${args.id} with name ${args.name}`
       )
       const session = this.sessions.get(args.id ?? '')
-      if (session == null) {
-        socket.emit(events.JoinSessionFailed)
-      } else if (args.name == null) {
-        socket.emit(events.JoinSessionFailed)
+      if (session == null || args.name == null) {
+        this.emit(socket, new responses.JoinSessionFailedResponse())
       } else {
         if (session.addUser(new User(args.name, socket.id))) {
+          // Add to room
           socket.join(session.id)
+
           // Broadcast that a user has joined
-          const res: events.JoinSessionSuccessResponse = {
-            session: session.id,
-            name: args.name,
-          }
-          this.io.to(session.id).emit(events.JoinSessionSuccess, res)
+          this.emit(
+            session.id,
+            new responses.JoinSessionSuccessResponse(session.id, args.name)
+          )
         } else {
-          socket.emit(events.JoinSessionFailed)
+          this.emit(socket, new responses.JoinSessionFailedResponse(session.id))
         }
       }
     }
@@ -106,18 +107,18 @@ export class SessionController {
    */
   addQuestionToSession(
     socket: Socket
-  ): SocketEventHandler<events.AddQuestionArgs> {
-    return (args?: events.AddQuestionArgs) => {
+  ): SocketEventHandler<requests.AddQuestionArgs> {
+    return (args?: requests.AddQuestionArgs) => {
       if (args == null) {
         debug('no args passed to addQuestionToSession')
-        socket.emit(events.AddQuestionFailed)
+        this.emit(socket, new responses.AddQuestionFailedResponse())
         return
       }
 
       const session = this.sessions.get(args.session ?? '')
       if (session == null || session.owner !== socket.id) {
         debug(`client ${socket.id} was not owner of any session`)
-        socket.emit(events.AddQuestionFailed)
+        this.emit(socket, new responses.AddQuestionFailedResponse())
       } else {
         debug(`client owns session ${session.id}`)
         if (
@@ -126,7 +127,7 @@ export class SessionController {
           args.question.body == null
         ) {
           debug('question was missing or missing fields')
-          socket.emit(events.AddQuestionFailed)
+          this.emit(socket, new responses.AddQuestionFailedResponse(session.id))
           return
         }
 
@@ -134,11 +135,14 @@ export class SessionController {
         const question = new Question(text, body)
         if (!Question.validateQuestion(question)) {
           debug('question has invalid format')
-          socket.emit(events.AddQuestionFailed)
+          this.emit(socket, new responses.AddQuestionFailedResponse(session.id))
         } else {
           debug('question added')
           session.quiz.addQuestion(question)
-          socket.emit(events.AddQuestionSuccess)
+          this.emit(
+            socket,
+            new responses.AddQuestionSuccessResponse(session.id)
+          )
         }
       }
     }
@@ -150,36 +154,38 @@ export class SessionController {
    */
   removeUserFromSession(
     socket: Socket
-  ): SocketEventHandler<events.SessionKickArgs> {
-    return (args?: events.SessionKickArgs) => {
+  ): SocketEventHandler<requests.SessionKickArgs> {
+    return (args?: requests.SessionKickArgs) => {
       if (args == null) {
         debug('no args passed to removeUserFromSession')
-        socket.emit(events.SessionKickFailed)
+        this.emit(socket, new responses.SessionKickFailedResponse())
         return
       }
 
       const session = this.sessions.get(args.session ?? '')
       if (session == null || session.owner !== socket.id) {
         debug(`could not find session ${args.session} with owner ${socket.id}`)
-        socket.emit(events.SessionKickFailed)
+        this.emit(socket, new responses.SessionKickFailedResponse(session?.id))
       } else if (args.name == null) {
         debug('missing name field')
-        socket.emit(events.SessionKickFailed)
+        this.emit(socket, new responses.SessionKickFailedResponse(session?.id))
       } else {
         const user = session.removeUser(args.name)
         if (user == null) {
           debug(`could not remove user ${args.name}`)
-          socket.emit(events.SessionKickFailed)
+          this.emit(socket, new responses.SessionKickFailedResponse(session.id))
           return
         }
 
         debug(`removed user ${args.name}`)
-        const res: events.SessionKickSuccessResponse = {
-          session: session.id,
-          name: args.name,
-        }
 
-        this.io.to(session.id).emit(events.SessionKickSuccess, res)
+        // Broadcast the kick event
+        this.emit(
+          session.id,
+          new responses.SessionKickSuccessResponse(session.id, args.name)
+        )
+
+        // Force remove the kicked user
         this.io.in(user.id).socketsLeave(session.id)
       }
     }
@@ -189,43 +195,35 @@ export class SessionController {
    * Starts the owner's Session
    * @param socket Client socket owning the Session
    */
-  startSession(socket: Socket): SocketEventHandler<events.SessionStartArgs> {
-    return (args?: events.SessionStartArgs) => {
+  startSession(socket: Socket): SocketEventHandler<requests.SessionStartArgs> {
+    return (args?: requests.SessionStartArgs) => {
       if (args == null) {
         debug('no args passed to startSession')
-        const res: events.SessionStartFailedResponse = {
-          session: '',
-        }
-        socket.emit(events.SessionStartFailed, res)
+        this.emit(socket, new responses.SessionStartFailedResponse())
         return
       }
 
       const session = this.sessions.get(args.session ?? '')
       if (session == null || session.owner !== socket.id) {
         debug(`could not find session ${args.session} with owner ${socket.id}`)
-        const res: events.SessionStartFailedResponse = {
-          session: args.session,
-        }
-        socket.emit(events.SessionStartFailed, res)
+        this.emit(
+          socket,
+          new responses.SessionStartFailedResponse(args.session)
+        )
         return
       }
 
       if (session.isStarted) {
         debug(`session ${session.id} is already started`)
-        const res: events.SessionStartFailedResponse = {
-          session: args.session,
-        }
-        socket.emit(events.SessionStartFailed, res)
+        this.emit(socket, new responses.SessionStartFailedResponse(session.id))
         return
       }
 
       debug(`session ${session.id} starting`)
-      session.start()
 
-      const res: events.SessionStartedResponse = {
-        session: session.id,
-      }
-      this.io.to(session.id).emit(events.SessionStarted, res)
+      // Start session and broadcast event
+      session.start()
+      this.emit(session.id, new responses.SessionStartedResponse(session.id))
     }
   }
 
@@ -235,38 +233,52 @@ export class SessionController {
    */
   pushNextQuestion(
     socket: Socket
-  ): SocketEventHandler<events.NextQuestionArgs> {
-    return (args?: events.NextQuestionArgs) => {
+  ): SocketEventHandler<requests.NextQuestionArgs> {
+    return (args?: requests.NextQuestionArgs) => {
       if (args == null) {
         debug('no args passed to pushNextQuestion')
+        this.emit(socket, new responses.NextQuestionFailedResponse())
         return
       }
 
       const session = this.sessions.get(args.session ?? '')
       if (session == null || session.owner !== socket.id) {
         debug(`could not find session with owner ${socket.id}`)
+        this.emit(socket, new responses.NextQuestionFailedResponse(session?.id))
         return
       }
 
       if (!session.isStarted) {
         debug(`session ${session.id} is not started, not sending next question`)
+        this.emit(socket, new responses.NextQuestionFailedResponse(session.id))
         return
       }
 
       const nextQuestion = session.quiz.advanceToNextQuestion()
       if (nextQuestion == null) {
         debug(`session ${session.id} - quiz has no more questions`)
+        this.emit(
+          socket,
+          new responses.NextQuestionFailedResponse(
+            session.id,
+            session.quiz.numQuestions,
+            session.quiz.currentQuestionIndex
+          )
+        )
         return
       }
 
       debug(`session ${session.id} sending next question`)
-      const res: events.NextQuestionResponse = {
-        index: session.quiz.currentQuestionIndex,
-        session: session.id,
-        question: nextQuestion,
-      }
 
-      this.io.to(session.id).emit(events.NextQuestion, res)
+      // Broadcast the next question
+      this.emit(
+        session.id,
+        new responses.NextQuestionResponse(
+          session.id,
+          session.quiz.currentQuestionIndex,
+          nextQuestion
+        )
+      )
     }
   }
 
@@ -276,25 +288,28 @@ export class SessionController {
    */
   addQuestionResponse(
     socket: Socket
-  ): SocketEventHandler<events.QuestionResponseArgs> {
-    return (args?: events.QuestionResponseArgs) => {
+  ): SocketEventHandler<requests.QuestionResponseArgs> {
+    return (args?: requests.QuestionResponseArgs) => {
       if (args == null) {
         debug('no args passed to addQuestionResponse')
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(socket, new responses.QuestionResponseFailedResponse())
         return
       }
 
       const session = this.sessions.get(args.session ?? '')
       if (session == null) {
         debug(`could not find session ${args.session} to respond to`)
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(socket, new responses.QuestionResponseFailedResponse())
         return
       }
 
       const user = session.findUserByName(args.name ?? '')
       if (user == null || user.id !== socket.id) {
         debug(`could not add response by unknown user`)
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(
+          socket,
+          new responses.QuestionResponseFailedResponse(session.id)
+        )
         return
       }
 
@@ -302,7 +317,10 @@ export class SessionController {
         debug(
           `could not respond to session ${session.id} - not started (question null)`
         )
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(
+          socket,
+          new responses.QuestionResponseFailedResponse(session.id)
+        )
         return
       }
 
@@ -315,13 +333,19 @@ export class SessionController {
         debug(
           `could not respond to session ${session.id} - args.index (${args.index}) out of range`
         )
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(
+          socket,
+          new responses.QuestionResponseFailedResponse(session.id)
+        )
         return
       }
 
       if (args.response == null) {
         debug(`could not respond to session ${session.id} - args.response null`)
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(
+          socket,
+          new responses.QuestionResponseFailedResponse(session.id)
+        )
         return
       }
 
@@ -332,7 +356,10 @@ export class SessionController {
         isCorrect = question.addResponse(args.response)
       } catch (error) {
         debug(`failed to add response to ${session.id} question ${args.index}`)
-        socket.emit(events.QuestionResponseFailed)
+        this.emit(
+          socket,
+          new responses.QuestionResponseFailedResponse(session.id)
+        )
         return
       }
 
@@ -343,26 +370,30 @@ export class SessionController {
       const firstCorrect = question.firstCorrect ?? ''
 
       // Send statistics to owner
-      const ownerRes: events.QuestionResponseAddedResponse = {
-        index: args.index,
-        session: session.id,
-        user: user.name,
-        response: responseToString(args.response),
-        isCorrect,
-        firstCorrect,
-        frequency: question.frequencyOf(args.response),
-        relativeFrequency: question.relativeFrequencyOf(args.response),
-      }
-      this.io.to(session.owner).emit(events.QuestionResponseAdded, ownerRes)
+      this.emit(
+        session.owner,
+        new responses.QuestionResponseAddedResponse(
+          session.id,
+          args.index,
+          user.name,
+          responseToString(args.response),
+          isCorrect,
+          firstCorrect,
+          question.frequencyOf(args.response),
+          question.relativeFrequencyOf(args.response)
+        )
+      )
 
       // Send grade to user
-      const userRes: events.QuestionResponseSuccessResponse = {
-        index: args.index,
-        session: session.id,
-        firstCorrect: firstCorrect === user.name,
-        isCorrect,
-      }
-      socket.emit(events.QuestionResponseSuccess, userRes)
+      this.emit(
+        socket,
+        new responses.QuestionResponseSuccessResponse(
+          session.id,
+          args.index,
+          firstCorrect === user.name,
+          isCorrect
+        )
+      )
     }
   }
 
@@ -370,14 +401,11 @@ export class SessionController {
    * Ends a Session
    * @param socket Client socket that owns the Session
    */
-  endSession(socket: Socket): SocketEventHandler<events.EndSessionArgs> {
-    return (args?: events.EndSessionArgs) => {
+  endSession(socket: Socket): SocketEventHandler<requests.EndSessionArgs> {
+    return (args?: requests.EndSessionArgs) => {
       if (args == null) {
         debug('no args passed to endSession')
-        const res: events.SessionEndFailedResponse = {
-          session: '',
-        }
-        socket.emit(events.SessionEndFailed, res)
+        this.emit(socket, new responses.SessionEndFailedResponse())
         return
       }
 
@@ -386,36 +414,42 @@ export class SessionController {
         debug(
           `could not find session ${args.session} with owner ${socket.id} to end`
         )
-        const res: events.SessionEndFailedResponse = {
-          session: args.session,
-        }
-        socket.emit(events.SessionEndFailed, res)
+        this.emit(socket, new responses.SessionEndFailedResponse(session?.id))
         return
       }
 
       if (session.hasEnded) {
         debug(`session ${args.session} already ended`)
-        const res: events.SessionEndFailedResponse = {
-          session: args.session,
-        }
-        socket.emit(events.SessionEndFailed, res)
+        this.emit(socket, new responses.SessionEndFailedResponse(session.id))
         return
       }
 
       debug(`session ${session.id} ending`)
       session.end()
 
-      const res: events.SessionEndedResponse = {
-        session: session.id,
-      }
-
-      // Tell all users Session has ended
-      this.io.to(session.id).emit(events.SessionEnded, res)
+      // Broadcast to all users Session has ended
+      this.emit(session.id, new responses.SessionEndedResponse(session.id))
 
       // Remove all except owner from Session (so they can request data until they disconnect)
       this.io.except(session.owner).socketsLeave(session.id)
     }
   }
+
+  /**
+   * Ends the current Question, making it so users cannot respond.
+   * @param socket The socket that owns the Session and sent the event.
+   */
+  // endCurrentQuestion(
+  //   socket: Socket
+  // ): SocketEventHandler<requests.EndQuestionArgs> {
+  //   return (args?: requests.EndQuestionArgs) => {
+  //     if (args == null) {
+  //       debug('no args passed to endSession')
+  //       this.emit(socket, new responses.EndQuestionFailedResponse())
+  //       return
+  //     }
+  //   }
+  // }
 
   /**
    * Cleans up resources owned by the client, removing users from Session
@@ -432,11 +466,9 @@ export class SessionController {
         debug(`disconnecting client ${socket.id} owns session ${session.id}`)
         this.removeSession(session)
 
-        const res: events.SessionEndedResponse = {
-          session: session.id,
-        }
-
-        this.io.to(session.id).emit(events.SessionEnded, res)
+        // Broadcast that session has ended (because the owner left),
+        // and force disconnect all users in the session's room
+        this.emit(session.id, new responses.SessionEndedResponse(session.id))
         this.io.to(session.id).socketsLeave(session.id)
 
         this.removeSession(session)
@@ -452,16 +484,37 @@ export class SessionController {
             const user = session.findUserById(socket.id)
             if (user != null) {
               debug(`client ${socket.id} leaving room ${room}`)
-              const res: events.UserDisconnectedResponse = {
-                session: session.id,
-                name: user.name,
-              }
+
+              // Remove the user from the session instance
               session.removeUser(user.name)
-              this.io.to(room).emit(events.UserDisconnected, res)
+
+              // Notify room that a user disconnected
+              this.emit(
+                room,
+                new responses.UserDisconnectedResponse(session.id, user.name)
+              )
             }
           }
         })
       }
+    }
+  }
+
+  /**
+   * Emits a response to a target session, socket, or room.
+   * @param target either an ID string or Socket to emit to
+   * @param response the response to the client
+   */
+  private emit<Response extends responses.EventResponse>(
+    target: string | Socket,
+    response: Response
+  ) {
+    const cleanedResponse: any & { event: string } = Object.assign({}, response)
+    delete cleanedResponse['event']
+    if (target instanceof Socket) {
+      target.emit(response.event, cleanedResponse)
+    } else {
+      this.io.to(target).emit(response.event, cleanedResponse)
     }
   }
 }

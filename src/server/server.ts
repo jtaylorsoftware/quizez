@@ -8,7 +8,7 @@ import {
   NextQuestion,
   QuestionResponse,
   EndSession,
-} from 'session/events'
+} from 'event'
 import { Server } from 'socket.io'
 import { SessionController } from './controller'
 

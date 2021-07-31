@@ -3,7 +3,9 @@ import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
 import { MultipleChoiceFormat, Question } from 'session/quiz'
-import * as events from 'session/events'
+import * as events from 'event'
+import * as requests from 'requests'
+import * as responses from 'responses'
 import { io, Socket } from 'socket.io-client'
 
 describe('Server', () => {
@@ -52,10 +54,10 @@ describe('Server', () => {
 
       sessionOwner.on(
         events.CreatedSession,
-        (res: events.CreatedSessionResponse) => {
-          id = res.id
+        (res: responses.CreatedSessionResponse) => {
+          id = res.session
           name = nanoid(4)
-          const joinArgs: events.JoinSessionArgs = {
+          const joinArgs: requests.JoinSessionArgs = {
             id,
             name,
           }
@@ -82,7 +84,7 @@ describe('Server', () => {
       const testUser = io(`http://localhost:${port}`)
       const testName = nanoid(4)
       testUser.on('connect', () => {
-        const joinArgs: events.JoinSessionArgs = {
+        const joinArgs: requests.JoinSessionArgs = {
           id,
           name: testName,
         }
@@ -92,7 +94,7 @@ describe('Server', () => {
 
       testUser.on(
         events.JoinSessionSuccess,
-        (res: events.JoinSessionSuccessResponse) => {
+        (res: responses.JoinSessionSuccessResponse) => {
           expect(res.session).toBe(id)
           expect(res.name).toBe(testName)
           testUser.close()
@@ -157,7 +159,7 @@ describe('Server', () => {
       let ownerReceive: boolean = false
       sessionOwner.on(
         events.SessionKickSuccess,
-        (res: events.SessionKickSuccessResponse) => {
+        (res: responses.SessionKickSuccessResponse) => {
           ownerReceive = true
           expect(res.name).toBe(name)
           expect(res.session).toBe(id)
@@ -171,7 +173,7 @@ describe('Server', () => {
       let userReceive: boolean = false
       user.on(
         events.SessionKickSuccess,
-        (res: events.SessionKickSuccessResponse) => {
+        (res: responses.SessionKickSuccessResponse) => {
           userReceive = true
           expect(res.name).toBe(name)
           expect(res.session).toBe(id)
@@ -190,7 +192,7 @@ describe('Server', () => {
         done()
       }, 2000)
 
-      const kickArgs: events.SessionKickArgs = {
+      const kickArgs: requests.SessionKickArgs = {
         name,
         session: id,
       }
@@ -207,7 +209,7 @@ describe('Server', () => {
         done()
       })
 
-      const kickArgs: events.SessionKickArgs = {
+      const kickArgs: requests.SessionKickArgs = {
         name,
         session: id,
       }
@@ -250,7 +252,7 @@ describe('Server', () => {
         answer: 1,
       })
 
-      user.on(events.NextQuestion, (res: events.NextQuestionResponse) => {
+      user.on(events.NextQuestion, (res: responses.NextQuestionResponse) => {
         if (res.question.text === question.text) {
           userReceived = true
           if (userReceived && ownerReceived) {
@@ -265,7 +267,7 @@ describe('Server', () => {
       })
       sessionOwner.on(
         events.NextQuestion,
-        (res: events.NextQuestionResponse) => {
+        (res: responses.NextQuestionResponse) => {
           if (res.question.text === question.text) {
             ownerReceived = true
             if (userReceived && ownerReceived) {
@@ -290,7 +292,7 @@ describe('Server', () => {
       })
 
       user.on(events.NextQuestion, () => {
-        const response: events.QuestionResponseArgs = {
+        const response: requests.QuestionResponseArgs = {
           session: id,
           name,
           index: 0,
@@ -312,7 +314,7 @@ describe('Server', () => {
       let ownerReceived = false
       user.on(
         events.QuestionResponseSuccess,
-        (res: events.QuestionResponseSuccessResponse) => {
+        (res: responses.QuestionResponseSuccessResponse) => {
           userReceived = true
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
@@ -325,7 +327,7 @@ describe('Server', () => {
       )
       sessionOwner.on(
         events.QuestionResponseAdded,
-        (res: events.QuestionResponseAddedResponse) => {
+        (res: responses.QuestionResponseAddedResponse) => {
           ownerReceived = true
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
@@ -359,7 +361,7 @@ describe('Server', () => {
 
       sessionOwner.on(
         events.SessionEnded,
-        (res: events.SessionEndedResponse) => {
+        (res: responses.SessionEndedResponse) => {
           ownerReceived = true
           expect(res.session).toBe(id)
           if (ownerReceived && userReceived) {
@@ -367,7 +369,7 @@ describe('Server', () => {
           }
         }
       )
-      user.on(events.SessionEnded, (res: events.SessionEndedResponse) => {
+      user.on(events.SessionEnded, (res: responses.SessionEndedResponse) => {
         userReceived = true
         expect(res.session).toBe(id)
         if (ownerReceived && userReceived) {
@@ -383,7 +385,7 @@ describe('Server', () => {
         done()
       })
 
-      const args: events.EndSessionArgs = {
+      const args: requests.EndSessionArgs = {
         session: id,
       }
       sessionOwner.emit(events.EndSession, args)
@@ -409,7 +411,7 @@ describe('Server', () => {
 
       sessionOwner.on(
         events.UserDisconnected,
-        (res: events.UserDisconnectedResponse) => {
+        (res: responses.UserDisconnectedResponse) => {
           expect(res.name).toBe(name)
           expect(res.session).toBe(id)
           clearTimeout(eventTimeout)
