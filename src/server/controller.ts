@@ -128,7 +128,16 @@ export class SessionController {
         }
 
         const { text, body } = args.question
-        const question = new Question(text, body)
+        const question = new Question(text, body, Question.minTimeLimit, () => {
+          // End the question
+          question.end()
+
+          // Broadcast to users that question ended
+          this.emit(
+            session.id,
+            new responses.QuestionEndedSuccess(session.id, question.index)
+          )
+        })
         if (!Question.validateQuestion(question)) {
           debug('question has invalid format')
           this.emit(socket, new responses.AddQuestionFailed(session.id))
@@ -469,6 +478,9 @@ export class SessionController {
       debug(`client ${socket.id} is disconnecting; reason: ${reason}`)
       if (session != null) {
         debug(`disconnecting client ${socket.id} owns session ${session.id}`)
+
+        // Allow session cleanup by invoking end
+        session.end()
         this.removeSession(session)
 
         // Broadcast that session has ended (because the owner left),

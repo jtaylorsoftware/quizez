@@ -8,15 +8,49 @@ import {
   ResponseType,
 } from './quiz'
 
+type Seconds = number
+
+const SEC_TO_MS = 1000
+
+/**
+ * Question data expected to be received by clients
+ */
+export interface QuestionData {
+  text: string
+  body: QuestionBodyType
+  timeLimit: Seconds
+}
+
 /**
  * A varying-type Question, that could be multiple choice or fill-in
  */
 export class Question {
+  /**
+   * The index of this Question in its Quiz
+   */
+  public index: number = -1 // unassigned
+
   private _responses = Map<string, ResponseType>()
   private _frequency = Map<string, number>()
   private _firstCorrect: string | undefined
   private _isStarted: boolean = false
   private _hasEnded: boolean = false
+
+  private timeout!: NodeJS.Timeout
+
+  static readonly minTimeLimit: Seconds = 60
+  static readonly maxTimeLimit: Seconds = 300
+
+  /**
+   * Returns the data to transmit for this Question
+   */
+  get data(): QuestionData {
+    return {
+      text: this.text,
+      body: this.body,
+      timeLimit: this.timeLimit,
+    }
+  }
 
   /**
    * True if the Question has started (been sent to users), so it will accept responses
@@ -68,7 +102,25 @@ export class Question {
     return this._frequency.map((value) => value / this.numResponses)
   }
 
-  constructor(readonly text: string, readonly body: QuestionBodyType) {
+  /**
+   * Creates a Question
+   * @param text The main text of the Question (what is used by responders to determine answer)
+   * @param body The answer type and answer choices for the question
+   * @param timeLimit The time to answer the question
+   * @param onTimeout Optional callback function when question has timed out
+   */
+  constructor(
+    readonly text: string,
+    readonly body: QuestionBodyType,
+    readonly timeLimit: Seconds = Question.minTimeLimit,
+    private readonly onTimeout?: Function
+  ) {
+    if (
+      timeLimit < Question.minTimeLimit ||
+      timeLimit > Question.maxTimeLimit
+    ) {
+      throw new Error('Question.constructor: timeLimit outside allowed range')
+    }
     switch (this.body.type) {
       case MultipleChoiceFormat:
         this.body.choices.forEach((_, index) => {
@@ -86,6 +138,13 @@ export class Question {
    */
   start() {
     this._isStarted = true
+    this.timeout = setTimeout(() => {
+      this.end()
+
+      if (this.onTimeout != null) {
+        this.onTimeout()
+      }
+    }, this.timeLimit * SEC_TO_MS)
   }
 
   /**
@@ -94,6 +153,7 @@ export class Question {
   end() {
     if (this._isStarted) {
       this._hasEnded = true
+      clearTimeout(this.timeout)
     }
   }
 

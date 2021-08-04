@@ -1,5 +1,5 @@
 import * as events from 'event'
-import { Question } from 'session/quiz'
+import { Question, QuestionData } from 'session/quiz'
 
 /**
  *
@@ -125,6 +125,7 @@ export class NextQuestionFailed extends EventResponse {
 }
 
 export class NextQuestion extends EventResponse {
+  readonly question: QuestionData
   constructor(
     session: string,
 
@@ -136,9 +137,10 @@ export class NextQuestion extends EventResponse {
     /**
      * The next Question
      */
-    readonly question: Question
+    question: Question
   ) {
     super(events.NextQuestion, session)
+    this.question = question.data
   }
 }
 

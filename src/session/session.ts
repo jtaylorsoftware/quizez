@@ -111,6 +111,11 @@ export class Session {
   end() {
     if (this._isStarted) {
       this._hasEnded = true
+      // Cleanup the current started question
+      const currentQuestion = this._quiz.currentQuestion
+      if (currentQuestion != null) {
+        currentQuestion.end()
+      }
     }
   }
 }

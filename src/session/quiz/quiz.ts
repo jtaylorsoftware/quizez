@@ -63,6 +63,7 @@ export class Quiz {
    */
   addQuestion(question: Question) {
     this.questions = this.questions.push(question)
+    question.index = this.questions.size - 1
   }
 
   /**
