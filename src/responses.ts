@@ -103,21 +103,17 @@ export class UserDisconnected extends EventResponse {
 }
 
 export class NextQuestionFailed extends EventResponse {
+  /**
+   * The number of questions in the quiz, if applicable
+   */
   readonly numQuestions: number
+
+  /**
+   * The current question index of the quiz, if applicable
+   */
   readonly currentIndex: number
-  constructor(
-    session?: string,
 
-    /**
-     * The number of questions in the quiz, if applicable
-     */
-    numQuestions?: number,
-
-    /**
-     * The current question index of the quiz, if applicable
-     */
-    currentIndex?: number
-  ) {
+  constructor(session?: string, numQuestions?: number, currentIndex?: number) {
     super(events.NextQuestionFailed, session)
     this.numQuestions = numQuestions ?? -1
     this.currentIndex = currentIndex ?? -1
@@ -134,9 +130,6 @@ export class NextQuestion extends EventResponse {
      */
     readonly index: number,
 
-    /**
-     * The next Question
-     */
     question: Question
   ) {
     super(events.NextQuestion, session)
