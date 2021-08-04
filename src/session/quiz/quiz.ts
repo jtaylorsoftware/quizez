@@ -5,14 +5,21 @@ import { Question } from './question'
  * A single-Session Quiz that contains multiple questions
  */
 export class Quiz {
-  private questions = List<Question>()
+  private _questions = List<Question>()
   private _currentQuestionIndex: number = -1
+
+  /**
+   * A view of the questions in the Quiz
+   */
+  get questions(): List<Question> {
+    return this._questions
+  }
 
   /**
    * The number of questions in the Quiz
    */
   get numQuestions(): number {
-    return this.questions.count()
+    return this._questions.size
   }
 
   /**
@@ -28,11 +35,11 @@ export class Quiz {
   get currentQuestion(): Question | null {
     if (
       this._currentQuestionIndex < 0 ||
-      this._currentQuestionIndex >= this.questions.count()
+      this._currentQuestionIndex >= this.numQuestions
     ) {
       return null
     }
-    return this.questions.get(this._currentQuestionIndex)!
+    return this._questions.get(this._currentQuestionIndex)!
   }
 
   /**
@@ -40,7 +47,7 @@ export class Quiz {
    * @returns the Question if it exists or undefined
    */
   questionAt(index: number): Question | undefined {
-    return this.questions.get(index)
+    return this._questions.get(index)
   }
 
   /**
@@ -48,11 +55,11 @@ export class Quiz {
    * @returns the next Question or null if no more Questions
    */
   advanceToNextQuestion(): Question | null {
-    if (this._currentQuestionIndex + 1 >= this.questions.count()) {
+    if (this._currentQuestionIndex + 1 >= this.numQuestions) {
       return null
     }
     this._currentQuestionIndex += 1
-    const question = this.questions.get(this._currentQuestionIndex)!
+    const question = this._questions.get(this._currentQuestionIndex)!
     question.start()
     return question
   }
@@ -62,8 +69,8 @@ export class Quiz {
    * @param question Question to add
    */
   addQuestion(question: Question) {
-    this.questions = this.questions.push(question)
-    question.index = this.questions.size - 1
+    this._questions = this._questions.push(question)
+    question.index = this._questions.size - 1
   }
 
   /**
@@ -72,7 +79,7 @@ export class Quiz {
    */
   clone(): Quiz {
     const copy = new Quiz()
-    copy.questions = this.questions.map((question) => question.clone())
+    copy._questions = this._questions.map((question) => question.clone())
     copy._currentQuestionIndex = this._currentQuestionIndex
     return copy
   }
