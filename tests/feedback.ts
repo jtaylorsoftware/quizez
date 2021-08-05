@@ -9,7 +9,7 @@ describe('Feedback', () => {
       }
       expect(Feedback.validate(feedback)).toContainEqual({
         field: 'rating',
-        value: undefined,
+        value: null,
       })
 
       feedback = {
@@ -38,7 +38,7 @@ describe('Feedback', () => {
       }
       expect(Feedback.validate(feedback)).toContainEqual({
         field: 'message',
-        value: undefined,
+        value: null,
       })
 
       feedback = {

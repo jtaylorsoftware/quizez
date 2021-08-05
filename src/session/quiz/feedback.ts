@@ -11,16 +11,6 @@ export interface FeedbackError {
   value?: any
 }
 
-export interface RatingError extends FeedbackError {
-  field: 'rating'
-  value?: number
-}
-
-export interface MessageError extends FeedbackError {
-  field: 'message'
-  value?: string
-}
-
 export class Feedback {
   static readonly maxMessageCharacters = 100
 
@@ -35,7 +25,7 @@ export class Feedback {
     if (feedback.rating == null || !(feedback.rating in Rating)) {
       errors.push({
         field: 'rating',
-        value: feedback.rating,
+        value: feedback.rating == null ? null : feedback.rating, // convert undefined (typescript optional value) to null for JSON encoding
       })
     }
 
@@ -45,7 +35,7 @@ export class Feedback {
     ) {
       errors.push({
         field: 'message',
-        value: feedback.message,
+        value: feedback.message == null ? null : feedback.message,
       })
     }
     return errors
