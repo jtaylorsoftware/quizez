@@ -1,4 +1,5 @@
 import { QuestionSubmission, ResponseType } from 'session/quiz'
+import Feedback from 'session/quiz/feedback'
 
 /**
  *
@@ -82,7 +83,7 @@ export interface AddQuestion {
   question: QuestionSubmission | undefined
 }
 
-export class QuestionResponse {
+export interface QuestionResponse {
   /**
    * The id of the session containing the Question
    */
@@ -102,4 +103,26 @@ export class QuestionResponse {
    * The user's response
    */
   response: ResponseType | undefined
+}
+
+export interface SubmitFeedback {
+  /**
+   * The id of the session
+   */
+  session: string | undefined
+
+  /**
+   * The name of the user submitting
+   */
+  name: string | undefined
+
+  /**
+   * The index of Question the feedback is for
+   */
+  question: number | undefined
+
+  /**
+   * The feedback
+   */
+  feedback: Partial<Feedback> | undefined
 }

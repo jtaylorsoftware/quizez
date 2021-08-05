@@ -143,6 +143,26 @@ export enum SessionEvent {
    * successfully
    */
   QuestionResponseAdded = 'question response added',
+
+  /**
+   * User giving feedback to a Question
+   */
+  SubmitFeedback = 'submit feedback',
+
+  /**
+   * Failure case. See `SubmitFeedback`
+   */
+  SubmitFeedbackFailed = 'submit feedback failed',
+
+  /**
+   * Success case. See `Submit Feedback`
+   */
+  SubmitFeedbackSuccess = 'submit feedback success',
+
+  /**
+   * Session owner receiving Question feedback
+   */
+  FeedbackSubmitted = 'feedback submitted',
 }
 
 export default SessionEvent

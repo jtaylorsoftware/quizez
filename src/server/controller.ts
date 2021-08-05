@@ -2,7 +2,7 @@ import { Map } from 'immutable'
 import * as requests from 'requests'
 import * as responses from 'responses'
 import { Session } from 'session'
-import { Question, responseToString } from 'session/quiz'
+import { Feedback, Question, responseToString } from 'session/quiz'
 import { User } from 'session/user'
 import { Server, Socket } from 'socket.io'
 
@@ -462,6 +462,95 @@ export class SessionController {
         session.id,
         new responses.QuestionEndedSuccess(session.id, currentIndex)
       )
+    }
+  }
+
+  /**
+   * Adds feedback to a question.
+   * @param socket  The socket that has joined a session and is submitting feedback.
+   * @returns
+   */
+  submitQuestionFeedback(
+    socket: Socket
+  ): SocketEventHandler<requests.SubmitFeedback> {
+    return (args?: requests.SubmitFeedback) => {
+      if (args == null) {
+        debug('no args passed to submitQuestionFeedback')
+        this.emit(socket, new responses.SubmitFeedbackFailed())
+        return
+      }
+
+      const session = this.sessions.get(args.session ?? '')
+      if (session == null) {
+        debug(`could not find session ${args.session} to submit feedback to`)
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+
+      // Check name and validate user exists
+      const user = session.findUserByName(args.name ?? '')
+      if (user == null || user.id !== socket.id) {
+        debug(
+          `could not submit feedback from unknown user ${args.name} to ${args.session}`
+        )
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+
+      // Check question index - any index that has been seen is valid
+      if (
+        args.question == null ||
+        args.question < 0 ||
+        args.question > session.quiz.currentQuestionIndex
+      ) {
+        debug(
+          `could not submit feedback from ${args.name} to ${session.id} with bad question index ${args.question}`
+        )
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+
+      // Check feedback
+      if (args.feedback == null) {
+        debug(`could not submit feedback with empty body`)
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+
+      // Ensure feedback passes constraints
+      if (Feedback.validate(args.feedback).length !== 0) {
+        debug(`could not validate feedback: ${args.feedback}`)
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+      const feedback = new Feedback(
+        args.feedback.rating!,
+        args.feedback.message!
+      )
+
+      // Ensure feedback is not duplicated
+      const question = session.quiz.questionAt(args.question)
+      if (question == null || !question.addFeedback(user.name, feedback)) {
+        debug(
+          `could add feedback for user ${user.name} to ${session.id}: duplicate`
+        )
+        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        return
+      }
+
+      // Tell session owner that feedback added
+      this.emit(
+        session.owner,
+        new responses.FeedbackSubmitted(
+          session.id,
+          user.name,
+          args.question,
+          feedback
+        )
+      )
+
+      // Tell submitter that operation succeeded
+      this.emit(socket.id, new responses.SubmitFeedbackSuccess(session.id))
     }
   }
 

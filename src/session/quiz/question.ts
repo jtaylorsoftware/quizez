@@ -7,6 +7,7 @@ import {
   QuestionBodyType,
   ResponseType,
 } from './quiz'
+import Feedback from './feedback'
 
 type Seconds = number
 
@@ -30,8 +31,9 @@ export class Question {
    */
   public index: number = -1 // unassigned
 
-  private _responses = Map<string, ResponseType>()
-  private _frequency = Map<string, number>()
+  private _feedback = Map<string, Feedback>() // keyed on username
+  private _responses = Map<string, ResponseType>() // keyed on username
+  private _frequency = Map<string, number>() // keyed on stringified response data
   private _firstCorrect: string | undefined
   private _isStarted: boolean = false
   private _hasEnded: boolean = false
@@ -103,6 +105,13 @@ export class Question {
   }
 
   /**
+   * The feedback submitted to the Question
+   */
+  get feedback(): Map<string, Feedback> {
+    return this._feedback
+  }
+
+  /**
    * Creates a Question
    * @param text The main text of the Question (what is used by responders to determine answer)
    * @param body The answer type and answer choices for the question
@@ -115,12 +124,6 @@ export class Question {
     readonly timeLimit: Seconds = Question.minTimeLimit,
     private readonly onTimeout?: Function
   ) {
-    if (
-      timeLimit < Question.minTimeLimit ||
-      timeLimit > Question.maxTimeLimit
-    ) {
-      throw new Error('Question.constructor: timeLimit outside allowed range')
-    }
     switch (this.body.type) {
       case MultipleChoiceFormat:
         this.body.choices.forEach((_, index) => {
@@ -180,6 +183,20 @@ export class Question {
     }
     this.updateFrequency(response)
     return isCorrect
+  }
+
+  /**
+   * Adds user submitted Feedback to this Question
+   * @param user person submitting Feedback
+   * @param feedback the user's Feedback
+   * @returns true if successfully submitted, false if duplicate
+   */
+  addFeedback(user: string, feedback: Feedback): boolean {
+    if (this._feedback.has(user)) {
+      return false
+    }
+    this._feedback = this._feedback.set(user, feedback)
+    return true
   }
 
   /**
@@ -262,6 +279,13 @@ export class Question {
       return false
     }
     if (question.text == null || question.text.length === 0) {
+      return false
+    }
+    if (
+      question.timeLimit == null ||
+      question.timeLimit < Question.minTimeLimit ||
+      question.timeLimit > Question.maxTimeLimit
+    ) {
       return false
     }
     switch (question.body.type) {

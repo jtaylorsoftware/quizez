@@ -1,5 +1,6 @@
 import SessionEvent from 'event'
 import { Question, QuestionData } from 'session/quiz'
+import Feedback from 'session/quiz/feedback'
 
 /**
  *
@@ -271,5 +272,46 @@ export class QuestionEndedSuccess implements EventResponse {
      * The question index
      */
     readonly question: number
+  ) {}
+}
+
+export class SubmitFeedbackSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SubmitFeedbackSuccess
+  }
+
+  constructor(readonly session: string) {}
+}
+
+export class SubmitFeedbackFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SubmitFeedbackFailed
+  }
+
+  constructor(readonly session: string = '') {}
+}
+
+export class FeedbackSubmitted implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.FeedbackSubmitted
+  }
+
+  constructor(
+    readonly session: string,
+
+    /**
+     * The name of user submitting feedback
+     */
+    readonly user: string,
+
+    /**
+     * The index of the question the feedback is for
+     */
+    readonly question: number,
+
+    /**
+     * The user's feedback
+     */
+    readonly feedback: Feedback
   ) {}
 }

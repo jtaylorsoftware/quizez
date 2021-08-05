@@ -2,7 +2,7 @@ import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
-import { MultipleChoiceFormat, Question } from 'session/quiz'
+import { Feedback, MultipleChoiceFormat, Question, Rating } from 'session/quiz'
 import SessionEvent from 'event'
 import * as requests from 'requests'
 import * as responses from 'responses'
@@ -429,7 +429,7 @@ describe('Server', () => {
       user.disconnect()
     })
 
-    it('should not send SocketEvent to users that have left', (done) => {
+    it('should not send SessionEvent to users that have left', (done) => {
       let eventTimeout: NodeJS.Timeout
       user.on(SessionEvent.SessionEnded, () => {
         clearTimeout(eventTimeout)
@@ -513,6 +513,69 @@ describe('Server', () => {
           clearTimeout(eventTimeout)
           done()
         }
+      })
+
+      sessionOwner.emit(SessionEvent.AddQuestion, {
+        session: id,
+        question,
+      })
+    })
+
+    it('should allow users to submit feedback', (done) => {
+      let eventTimeout: NodeJS.Timeout
+      let userReceived = false
+      let ownerReceived = false
+
+      const question: Question = new Question('Question', {
+        type: MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      const feedbackSubmission: requests.SubmitFeedback = {
+        session: id,
+        name,
+        question: 0,
+        feedback: new Feedback(Rating.Easy, 'It is too easy'),
+      }
+
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.StartSession, { session: id })
+      })
+      sessionOwner.on(SessionEvent.NextQuestion, () => {
+        user.emit(SessionEvent.SubmitFeedback, feedbackSubmission)
+
+        // Fail if Feedback is not received
+        eventTimeout = setTimeout(() => {
+          expect('No Event').toBe('FeedbackSubmitted and SubmitFeedbackSuccess')
+        }, 2000)
+      })
+
+      user.on(SessionEvent.SubmitFeedbackSuccess, () => {
+        userReceived = true
+        if (userReceived && ownerReceived) {
+          clearTimeout(eventTimeout)
+          done()
+        }
+      })
+
+      sessionOwner.on(
+        SessionEvent.FeedbackSubmitted,
+        (res: responses.FeedbackSubmitted) => {
+          expect(res.feedback).toEqual(feedbackSubmission.feedback)
+          expect(res.user).toBe(feedbackSubmission.name)
+          ownerReceived = true
+          if (userReceived && ownerReceived) {
+            clearTimeout(eventTimeout)
+            done()
+          }
+        }
+      )
+
+      user.on(SessionEvent.SessionStarted, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, {
+          session: id,
+        })
       })
 
       sessionOwner.emit(SessionEvent.AddQuestion, {
