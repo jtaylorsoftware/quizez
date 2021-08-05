@@ -138,7 +138,7 @@ export class SessionController {
             new responses.QuestionEndedSuccess(session.id, question.index)
           )
         })
-        if (!Question.validateQuestion(question)) {
+        if (Question.validate(question).length !== 0) {
           debug('question has invalid format')
           this.emit(socket, new responses.AddQuestionFailed(session.id))
         } else {

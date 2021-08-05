@@ -1,17 +1,45 @@
 import { List, Map } from 'immutable'
-import {
-  FillIn,
-  FillInFormat,
-  MultipleChoice,
-  MultipleChoiceFormat,
-  QuestionBodyType,
-  ResponseType,
-} from './quiz'
+import { ResponseType } from '.'
 import Feedback from './feedback'
 
-type Seconds = number
+// Question body formats, which dictate how to parse Questions
 
-const SEC_TO_MS = 1000
+export const MultipleChoiceFormat = 'MultipleChoice'
+export const FillInFormat = 'FillIn'
+export type QuestionFormat = typeof MultipleChoiceFormat | typeof FillInFormat
+
+// ---
+
+// Type for Questions received through requests
+export interface QuestionSubmission {
+  text: string | undefined
+  body: QuestionBodyType | undefined
+}
+
+// Concrete body types and the types of their answers
+
+export interface MultipleChoiceAnswer {
+  text: string
+}
+
+export interface MultipleChoice {
+  type: typeof MultipleChoiceFormat
+  choices: MultipleChoiceAnswer[]
+  answer: number
+}
+
+export type FillInAnswer = string
+
+export interface FillIn {
+  type: typeof FillInFormat
+  answer: FillInAnswer
+}
+
+export type QuestionBodyType = MultipleChoice | FillIn
+
+// ---
+
+type Seconds = number
 
 /**
  * Question data expected to be received by clients
@@ -141,6 +169,8 @@ export class Question {
    */
   start() {
     this._isStarted = true
+
+    const SEC_TO_MS = 1000
     this.timeout = setTimeout(() => {
       this.end()
 
@@ -274,57 +304,100 @@ export class Question {
     }
   }
 
-  static validateQuestion(question: Partial<Question>): boolean {
-    if (question.body == null || question.body.type == null) {
-      return false
-    }
+  static validate(question: Partial<Question>): QuestionError[] {
+    const errors: QuestionError[] = []
+
     if (question.text == null || question.text.length === 0) {
-      return false
+      errors.push({
+        field: 'text',
+        value:
+          question.text == null
+            ? null
+            : question.text /** convert undefined to null (or value) */,
+      })
     }
     if (
       question.timeLimit == null ||
       question.timeLimit < Question.minTimeLimit ||
       question.timeLimit > Question.maxTimeLimit
     ) {
-      return false
+      errors.push({
+        field: 'timeLimit',
+        value: question.timeLimit == null ? null : question.timeLimit,
+      })
     }
-    switch (question.body.type) {
-      case MultipleChoiceFormat:
-        return this.validateMultipleChoiceQuestion(question.body)
-      case FillInFormat:
-        return this.validateFillInQuestion(question.body)
-      default:
-        return false
+
+    if (question.body == null || question.body.type == null) {
+      errors.push({ field: 'body', value: null })
+    } else {
+      switch (question.body.type) {
+        case MultipleChoiceFormat:
+          errors.concat(this.validateMultipleChoiceQuestion(question.body))
+          break
+        case FillInFormat:
+          errors.concat(this.validateFillInQuestion(question.body))
+          break
+      }
     }
+
+    return errors
   }
 
   private static validateMultipleChoiceQuestion(
-    question: MultipleChoice
-  ): boolean {
+    question: Partial<MultipleChoice>
+  ): QuestionError[] {
+    const errors = <QuestionError[]>[]
     if (
       question.choices == null ||
       question.choices.length < 2 ||
       question.choices.length > 4
     ) {
-      return false
+      errors.push({
+        field: 'choices',
+        value: question.choices == null ? null : question.choices,
+      })
+    } else {
+      question.choices.forEach((choice, index) => {
+        if (choice.text == null || choice.text.length === 0) {
+          errors.push({
+            field: 'choices',
+            value: { index, value: choice.text == null ? null : choice.text },
+          })
+        }
+      })
     }
 
-    for (const choice of question.choices) {
-      if (choice.text == null || choice.text.length === 0) {
-        return false
-      }
+    if (
+      question.answer == null ||
+      question.answer < 0 ||
+      (question.choices != null && question.answer >= question.choices.length)
+    ) {
+      errors.push({
+        field: 'answer',
+        value: question.answer == null ? null : question.answer,
+      })
     }
 
-    if (question.answer < 0 || question.answer >= question.choices.length) {
-      return false
-    }
-
-    return true
+    return errors
   }
 
-  private static validateFillInQuestion(question: FillIn): boolean {
-    return question.answer != null && question.answer.length !== 0
+  private static validateFillInQuestion(question: FillIn): QuestionError[] {
+    if (question.answer == null || question.answer.length === 0) {
+      return [
+        {
+          field: 'answer',
+          value: question.answer == null ? null : question.answer,
+        },
+      ]
+    }
+    return []
   }
+}
+
+// Validation error
+export interface QuestionError {
+  field: keyof Question | keyof MultipleChoice | keyof FillIn
+  value?: any
 }
 
 export default Question
