@@ -11,7 +11,8 @@ const debug = require('debug')('app:controller')
 type SocketEventHandler<T> = (args?: T) => void
 
 /**
- * Manages adding and removing sessions
+ * Manages sessions - adding, removing, and handling specific actions
+ * requested by clients.
  */
 export class SessionController {
   private _sessions = Map<string, Session>()
