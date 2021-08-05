@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
 import { MultipleChoiceFormat, Question } from 'session/quiz'
-import * as events from 'event'
+import SessionEvent from 'event'
 import * as requests from 'requests'
 import * as responses from 'responses'
 import { io, Socket } from 'socket.io-client'
@@ -48,12 +48,12 @@ describe('Server', () => {
     beforeEach((done) => {
       user = io(`http://localhost:${port}`)
       user.on('connect', () => {
-        sessionOwner.emit(events.CreateNewSession)
+        sessionOwner.emit(SessionEvent.CreateNewSession)
       })
       user.connect()
 
       sessionOwner.on(
-        events.CreatedSession,
+        SessionEvent.CreatedSession,
         (res: responses.CreateSessionSuccess) => {
           id = res.session
           name = nanoid(4)
@@ -61,11 +61,11 @@ describe('Server', () => {
             id,
             name,
           }
-          user.emit(events.JoinSession, joinArgs)
+          user.emit(SessionEvent.JoinSession, joinArgs)
         }
       )
 
-      user.on(events.JoinSessionSuccess, () => {
+      user.on(SessionEvent.JoinSessionSuccess, () => {
         done()
       })
     })
@@ -88,12 +88,12 @@ describe('Server', () => {
           id,
           name: testName,
         }
-        testUser.emit(events.JoinSession, joinArgs)
+        testUser.emit(SessionEvent.JoinSession, joinArgs)
       })
       testUser.connect()
 
       testUser.on(
-        events.JoinSessionSuccess,
+        SessionEvent.JoinSessionSuccess,
         (res: responses.JoinSessionSuccess) => {
           expect(res.session).toBe(id)
           expect(res.name).toBe(testName)
@@ -101,7 +101,7 @@ describe('Server', () => {
           done()
         }
       )
-      testUser.on(events.JoinSessionFailed, () => {
+      testUser.on(SessionEvent.JoinSessionFailed, () => {
         expect(`JoinFailed, session id: ${id}`).toBe('JoinSessionSuccess')
         testUser.close()
         done()
@@ -109,11 +109,11 @@ describe('Server', () => {
     })
 
     it('should allow the session owner to add questions', (done) => {
-      sessionOwner.on(events.AddQuestionFailed, () => {
+      sessionOwner.on(SessionEvent.AddQuestionFailed, () => {
         expect('AddQuestionFailed').toBe('AddQuestionSuccess')
         done()
       })
-      sessionOwner.on(events.AddQuestionSuccess, () => {
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
         done()
       })
 
@@ -122,17 +122,17 @@ describe('Server', () => {
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 0,
       })
-      sessionOwner.emit(events.AddQuestion, {
+      sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })
     })
 
     it('should NOT allow other users to add questions', (done) => {
-      user.on(events.AddQuestionFailed, () => {
+      user.on(SessionEvent.AddQuestionFailed, () => {
         done()
       })
-      user.on(events.AddQuestionSuccess, () => {
+      user.on(SessionEvent.AddQuestionSuccess, () => {
         expect('AddQuestionSuccess').toBe('AddQuestionFailed')
         done()
       })
@@ -143,14 +143,14 @@ describe('Server', () => {
         answer: 1,
       })
 
-      user.emit(events.AddQuestion, {
+      user.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })
     })
 
     it('should broadcast to all users when owner kicks user', (done) => {
-      sessionOwner.on(events.SessionKickFailed, () => {
+      sessionOwner.on(SessionEvent.SessionKickFailed, () => {
         expect('SessionKickFailed').toBe('SessionKickSuccess')
         done()
       })
@@ -158,7 +158,7 @@ describe('Server', () => {
       let eventTimeout: NodeJS.Timeout
       let ownerReceive: boolean = false
       sessionOwner.on(
-        events.SessionKickSuccess,
+        SessionEvent.SessionKickSuccess,
         (res: responses.SessionKickSuccess) => {
           ownerReceive = true
           expect(res.name).toBe(name)
@@ -172,7 +172,7 @@ describe('Server', () => {
 
       let userReceive: boolean = false
       user.on(
-        events.SessionKickSuccess,
+        SessionEvent.SessionKickSuccess,
         (res: responses.SessionKickSuccess) => {
           userReceive = true
           expect(res.name).toBe(name)
@@ -196,15 +196,15 @@ describe('Server', () => {
         name,
         session: id,
       }
-      sessionOwner.emit(events.SessionKick, kickArgs)
+      sessionOwner.emit(SessionEvent.SessionKick, kickArgs)
     })
 
     it('should NOT allow other users to kick users', (done) => {
-      user.on(events.SessionKickFailed, () => {
+      user.on(SessionEvent.SessionKickFailed, () => {
         done()
       })
 
-      user.on(events.SessionKickSuccess, () => {
+      user.on(SessionEvent.SessionKickSuccess, () => {
         expect('SessionKickSuccess').toEqual('SessionKickFailed')
         done()
       })
@@ -213,7 +213,7 @@ describe('Server', () => {
         name,
         session: id,
       }
-      user.emit(events.SessionKick, kickArgs)
+      user.emit(SessionEvent.SessionKick, kickArgs)
     })
 
     it('should broadcast to all users when owner starts session', (done) => {
@@ -223,20 +223,20 @@ describe('Server', () => {
         done()
       }, 2000)
 
-      user.on(events.SessionStarted, () => {
+      user.on(SessionEvent.SessionStarted, () => {
         clearTimeout(eventTimeout)
         done()
       })
 
-      sessionOwner.emit(events.StartSession, { session: id })
+      sessionOwner.emit(SessionEvent.StartSession, { session: id })
     })
 
     it('should broadcast next question to all users', (done) => {
       let eventTimeout: NodeJS.Timeout
       let userReceived = false
       let ownerReceived = false
-      user.on(events.SessionStarted, () => {
-        sessionOwner.emit(events.NextQuestion, {
+      user.on(SessionEvent.SessionStarted, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, {
           session: id,
         })
 
@@ -252,7 +252,7 @@ describe('Server', () => {
         answer: 1,
       })
 
-      user.on(events.NextQuestion, (res: responses.NextQuestion) => {
+      user.on(SessionEvent.NextQuestion, (res: responses.NextQuestion) => {
         if (res.question.text === question.text) {
           userReceived = true
           if (userReceived && ownerReceived) {
@@ -262,33 +262,36 @@ describe('Server', () => {
         }
       })
 
-      sessionOwner.on(events.AddQuestionSuccess, () => {
-        sessionOwner.emit(events.StartSession, { session: id })
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.StartSession, { session: id })
       })
-      sessionOwner.on(events.NextQuestion, (res: responses.NextQuestion) => {
-        if (res.question.text === question.text) {
-          ownerReceived = true
-          if (userReceived && ownerReceived) {
-            clearTimeout(eventTimeout)
-            done()
+      sessionOwner.on(
+        SessionEvent.NextQuestion,
+        (res: responses.NextQuestion) => {
+          if (res.question.text === question.text) {
+            ownerReceived = true
+            if (userReceived && ownerReceived) {
+              clearTimeout(eventTimeout)
+              done()
+            }
           }
         }
-      })
-      sessionOwner.emit(events.AddQuestion, {
+      )
+      sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })
     })
 
     it('should grade responses and send results', (done) => {
-      sessionOwner.on(events.AddQuestionSuccess, () => {
-        sessionOwner.emit(events.StartSession, { session: id })
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.StartSession, { session: id })
       })
-      sessionOwner.on(events.SessionStarted, () => {
-        sessionOwner.emit(events.NextQuestion, { session: id })
+      sessionOwner.on(SessionEvent.SessionStarted, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, { session: id })
       })
 
-      user.on(events.NextQuestion, () => {
+      user.on(SessionEvent.NextQuestion, () => {
         const response: requests.QuestionResponse = {
           session: id,
           name,
@@ -299,10 +302,10 @@ describe('Server', () => {
             submitter: name,
           },
         }
-        user.emit(events.QuestionResponse, response)
+        user.emit(SessionEvent.QuestionResponse, response)
       })
 
-      user.on(events.QuestionResponseFailed, () => {
+      user.on(SessionEvent.QuestionResponseFailed, () => {
         expect('QuestionResponseFailed').toBe('QuestionResponseSuccess')
         done()
       })
@@ -310,7 +313,7 @@ describe('Server', () => {
       let userReceived = false
       let ownerReceived = false
       user.on(
-        events.QuestionResponseSuccess,
+        SessionEvent.QuestionResponseSuccess,
         (res: responses.QuestionResponseSuccess) => {
           userReceived = true
           expect(res.index).toBe(0)
@@ -323,7 +326,7 @@ describe('Server', () => {
         }
       )
       sessionOwner.on(
-        events.QuestionResponseAdded,
+        SessionEvent.QuestionResponseAdded,
         (res: responses.QuestionResponseAdded) => {
           ownerReceived = true
           expect(res.index).toBe(0)
@@ -346,7 +349,7 @@ describe('Server', () => {
         answer: 1,
       })
 
-      sessionOwner.emit(events.AddQuestion, {
+      sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })
@@ -357,7 +360,7 @@ describe('Server', () => {
       let userReceived = false
 
       sessionOwner.on(
-        events.SessionEnded,
+        SessionEvent.SessionEnded,
         (res: responses.SessionEndedSuccess) => {
           ownerReceived = true
           expect(res.session).toBe(id)
@@ -366,18 +369,21 @@ describe('Server', () => {
           }
         }
       )
-      user.on(events.SessionEnded, (res: responses.SessionEndedSuccess) => {
-        userReceived = true
-        expect(res.session).toBe(id)
-        if (ownerReceived && userReceived) {
-          done()
+      user.on(
+        SessionEvent.SessionEnded,
+        (res: responses.SessionEndedSuccess) => {
+          userReceived = true
+          expect(res.session).toBe(id)
+          if (ownerReceived && userReceived) {
+            done()
+          }
         }
-      })
-      sessionOwner.on(events.SessionEndFailed, () => {
+      )
+      sessionOwner.on(SessionEvent.SessionEndFailed, () => {
         expect('SessionEndFailed').toBe('SessionEnded')
         done()
       })
-      user.on(events.SessionEndFailed, () => {
+      user.on(SessionEvent.SessionEndFailed, () => {
         expect('SessionEndFailed').toBe('SessionEnded')
         done()
       })
@@ -385,13 +391,13 @@ describe('Server', () => {
       const args: requests.EndSession = {
         session: id,
       }
-      sessionOwner.emit(events.EndSession, args)
+      sessionOwner.emit(SessionEvent.EndSession, args)
     })
 
     it('should notify users when owner disconnects', (done) => {
       let eventTimeout: NodeJS.Timeout
 
-      user.on(events.SessionEnded, () => {
+      user.on(SessionEvent.SessionEnded, () => {
         clearTimeout(eventTimeout)
         done()
       })
@@ -407,7 +413,7 @@ describe('Server', () => {
       let eventTimeout: NodeJS.Timeout
 
       sessionOwner.on(
-        events.UserDisconnected,
+        SessionEvent.UserDisconnected,
         (res: responses.UserDisconnected) => {
           expect(res.name).toBe(name)
           expect(res.session).toBe(id)
@@ -423,14 +429,14 @@ describe('Server', () => {
       user.disconnect()
     })
 
-    it('should not send events to users that have left', (done) => {
+    it('should not send SocketEvent to users that have left', (done) => {
       let eventTimeout: NodeJS.Timeout
-      user.on(events.SessionEnded, () => {
+      user.on(SessionEvent.SessionEnded, () => {
         clearTimeout(eventTimeout)
         expect('SessionEnded').toBe('No Event')
         done()
       })
-      user.on(events.NextQuestion, () => {
+      user.on(SessionEvent.NextQuestion, () => {
         clearTimeout(eventTimeout)
         expect('NextQuestion').toBe('No Event')
         done()
@@ -438,7 +444,7 @@ describe('Server', () => {
 
       user.disconnect()
 
-      sessionOwner.emit(events.StartSession, { session: id })
+      sessionOwner.emit(SessionEvent.StartSession, { session: id })
 
       eventTimeout = setTimeout(() => {
         done()
@@ -450,11 +456,11 @@ describe('Server', () => {
         answer: 1,
       })
 
-      sessionOwner.on(events.AddQuestionSuccess, () => {
-        sessionOwner.emit(events.NextQuestion, { session: id })
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, { session: id })
       })
 
-      sessionOwner.emit(events.AddQuestion, {
+      sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })
@@ -465,8 +471,8 @@ describe('Server', () => {
       let userReceived = false
       let ownerReceived = false
 
-      user.on(events.SessionStarted, () => {
-        sessionOwner.emit(events.NextQuestion, {
+      user.on(SessionEvent.SessionStarted, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, {
           session: id,
         })
       })
@@ -477,7 +483,7 @@ describe('Server', () => {
         answer: 1,
       })
 
-      user.on(events.QuestionEnded, () => {
+      user.on(SessionEvent.QuestionEnded, () => {
         userReceived = true
         if (userReceived && ownerReceived) {
           clearTimeout(eventTimeout)
@@ -485,15 +491,15 @@ describe('Server', () => {
         }
       })
 
-      sessionOwner.on(events.AddQuestionSuccess, () => {
-        sessionOwner.emit(events.StartSession, { session: id })
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.StartSession, { session: id })
       })
-      sessionOwner.on(events.NextQuestion, () => {
+      sessionOwner.on(SessionEvent.NextQuestion, () => {
         const args: requests.EndQuestion = {
           session: id,
           question: 0,
         }
-        sessionOwner.emit(events.EndQuestion, args)
+        sessionOwner.emit(SessionEvent.EndQuestion, args)
 
         // Fail if QuestionEnded is not received
         eventTimeout = setTimeout(() => {
@@ -501,7 +507,7 @@ describe('Server', () => {
         }, 2000)
       })
 
-      sessionOwner.on(events.QuestionEnded, () => {
+      sessionOwner.on(SessionEvent.QuestionEnded, () => {
         ownerReceived = true
         if (userReceived && ownerReceived) {
           clearTimeout(eventTimeout)
@@ -509,7 +515,7 @@ describe('Server', () => {
         }
       })
 
-      sessionOwner.emit(events.AddQuestion, {
+      sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
       })

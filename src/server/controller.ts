@@ -526,12 +526,10 @@ export class SessionController {
     target: string | Socket,
     response: Response
   ) {
-    const cleanedResponse: any & { event: string } = Object.assign({}, response)
-    delete cleanedResponse['event']
     if (target instanceof Socket) {
-      target.emit(response.event, cleanedResponse)
+      target.emit(response.event, response)
     } else {
-      this.io.to(target).emit(response.event, cleanedResponse)
+      this.io.to(target).emit(response.event, response)
     }
   }
 }

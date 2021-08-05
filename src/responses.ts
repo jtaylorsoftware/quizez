@@ -1,4 +1,4 @@
-import * as events from 'event'
+import SessionEvent from 'event'
 import { Question, QuestionData } from 'session/quiz'
 
 /**
@@ -10,120 +10,140 @@ import { Question, QuestionData } from 'session/quiz'
  */
 
 /**
- *
+ * A response to an event that was received from a client socket
  */
-export class EventResponse {
-  readonly event: string
-  readonly session: string
-  constructor(key: string, session?: string) {
-    this.event = key
-    this.session = session ?? ''
-  }
+export interface EventResponse {
+  get event(): SessionEvent
+  session: string
 }
 
-export class CreateSessionSuccess extends EventResponse {
-  constructor(session: string) {
-    super(events.CreatedSession, session)
+export class CreateSessionSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.CreatedSession
   }
+
+  constructor(readonly session: string) {}
 }
 
-export class JoinSessionFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.JoinSessionFailed, session)
+export class JoinSessionFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.JoinSessionFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class JoinSessionSuccess extends EventResponse {
+export class JoinSessionSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.JoinSessionSuccess
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The name of the user joining
      */
     readonly name: string
-  ) {
-    super(events.JoinSessionSuccess, session)
-  }
+  ) {}
 }
 
-export class SessionKickSuccess extends EventResponse {
+export class SessionKickSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionKickSuccess
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The user kicked
      */
     readonly name: string
-  ) {
-    super(events.SessionKickSuccess, session)
-  }
+  ) {}
 }
 
-export class SessionKickFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.SessionKickFailed, session)
+export class SessionKickFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionKickFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class SessionStartedSuccess extends EventResponse {
-  constructor(session: string) {
-    super(events.SessionStarted, session)
+export class SessionStartedSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionStarted
   }
+
+  constructor(readonly session: string) {}
 }
 
-export class SessionStartFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.SessionStartFailed, session)
+export class SessionStartFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionStartFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class SessionEndedSuccess extends EventResponse {
-  constructor(session: string) {
-    super(events.SessionEnded, session)
+export class SessionEndedSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionEnded
   }
+
+  constructor(readonly session: string) {}
 }
 
-export class SessionEndFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.SessionEndFailed, session)
+export class SessionEndFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SessionEndFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class UserDisconnected extends EventResponse {
+export class UserDisconnected implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.UserDisconnected
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The name of user disconnecting
      */
     readonly name: string
-  ) {
-    super(events.UserDisconnected, session)
-  }
+  ) {}
 }
 
-export class NextQuestionFailed extends EventResponse {
-  /**
-   * The number of questions in the quiz, if applicable
-   */
-  readonly numQuestions: number
-
-  /**
-   * The current question index of the quiz, if applicable
-   */
-  readonly currentIndex: number
-
-  constructor(session?: string, numQuestions?: number, currentIndex?: number) {
-    super(events.NextQuestionFailed, session)
-    this.numQuestions = numQuestions ?? -1
-    this.currentIndex = currentIndex ?? -1
+export class NextQuestionFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.NextQuestionFailed
   }
+
+  constructor(
+    readonly session: string = '',
+    /**
+     * The number of questions in the quiz, if applicable
+     */
+    readonly numQuestions: number = -1,
+    /**
+     * The current question index of the quiz, if applicable
+     */
+    readonly currentIndex: number = -1
+  ) {}
 }
 
-export class NextQuestion extends EventResponse {
+export class NextQuestion implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.NextQuestion
+  }
+
   readonly question: QuestionData
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The index of the next Question
@@ -132,33 +152,42 @@ export class NextQuestion extends EventResponse {
 
     question: Question
   ) {
-    super(events.NextQuestion, session)
     this.question = question.data
   }
 }
 
 // TODO - ? Give useful info for retries
-export class AddQuestionFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.AddQuestionFailed, session)
+export class AddQuestionFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.AddQuestionFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class AddQuestionSuccess extends EventResponse {
-  constructor(session: string) {
-    super(events.AddQuestionSuccess, session)
+export class AddQuestionSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.AddQuestionSuccess
   }
+
+  constructor(readonly session: string) {}
 }
 
-export class QuestionResponseFailed extends EventResponse {
-  constructor(session?: string) {
-    super(events.QuestionResponseFailed, session)
+export class QuestionResponseFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.QuestionResponseFailed
   }
+
+  constructor(readonly session: string = '') {}
 }
 
-export class QuestionResponseSuccess extends EventResponse {
+export class QuestionResponseSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.QuestionResponseSuccess
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The index of the question this applies to
@@ -174,14 +203,16 @@ export class QuestionResponseSuccess extends EventResponse {
      * True if user Response is correct
      */
     readonly isCorrect: boolean
-  ) {
-    super(events.QuestionResponseSuccess, session)
-  }
+  ) {}
 }
 
-export class QuestionResponseAdded extends EventResponse {
+export class QuestionResponseAdded implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.QuestionResponseAdded
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The Question index
@@ -217,26 +248,28 @@ export class QuestionResponseAdded extends EventResponse {
      * The relative frequency of the user's response
      */
     readonly relativeFrequency: number
-  ) {
-    super(events.QuestionResponseAdded, session)
-  }
+  ) {}
 }
 
-export class EndQuestionFailed extends EventResponse {
-  constructor(session?: string, readonly question?: number) {
-    super(events.EndQuestionFailed, session)
+export class EndQuestionFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.EndQuestionFailed
   }
+
+  constructor(readonly session: string = '', readonly question?: number) {}
 }
 
-export class QuestionEndedSuccess extends EventResponse {
+export class QuestionEndedSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.QuestionEnded
+  }
+
   constructor(
-    session: string,
+    readonly session: string,
 
     /**
      * The question index
      */
     readonly question: number
-  ) {
-    super(events.QuestionEnded, session)
-  }
+  ) {}
 }

@@ -1,15 +1,5 @@
 import { createServer, Server as HttpServer } from 'http'
-import {
-  JoinSession,
-  CreateNewSession,
-  AddQuestion,
-  SessionKick,
-  StartSession,
-  NextQuestion,
-  QuestionResponse,
-  EndSession,
-  EndQuestion,
-} from 'event'
+import SessionEvent from 'event'
 import { Server } from 'socket.io'
 import { SessionController } from './controller'
 
@@ -24,23 +14,23 @@ function configure(io: Server) {
   io.on('connection', (socket) => {
     debug('received socket connection')
 
-    socket.on(CreateNewSession, sessionController.createSession(socket))
+    socket.on(SessionEvent.CreateNewSession, sessionController.createSession(socket))
 
-    socket.on(JoinSession, sessionController.addUserToSession(socket))
+    socket.on(SessionEvent.JoinSession, sessionController.addUserToSession(socket))
 
-    socket.on(AddQuestion, sessionController.addQuestionToSession(socket))
+    socket.on(SessionEvent.AddQuestion, sessionController.addQuestionToSession(socket))
 
-    socket.on(SessionKick, sessionController.removeUserFromSession(socket))
+    socket.on(SessionEvent.SessionKick, sessionController.removeUserFromSession(socket))
 
-    socket.on(StartSession, sessionController.startSession(socket))
+    socket.on(SessionEvent.StartSession, sessionController.startSession(socket))
 
-    socket.on(EndSession, sessionController.endSession(socket))
+    socket.on(SessionEvent.EndSession, sessionController.endSession(socket))
 
-    socket.on(NextQuestion, sessionController.pushNextQuestion(socket))
+    socket.on(SessionEvent.NextQuestion, sessionController.pushNextQuestion(socket))
 
-    socket.on(QuestionResponse, sessionController.addQuestionResponse(socket))
+    socket.on(SessionEvent.QuestionResponse, sessionController.addQuestionResponse(socket))
 
-    socket.on(EndQuestion, sessionController.endCurrentQuestion(socket))
+    socket.on(SessionEvent.EndQuestion, sessionController.endCurrentQuestion(socket))
 
     socket.on('disconnecting', sessionController.handleDisconnect(socket))
   })
