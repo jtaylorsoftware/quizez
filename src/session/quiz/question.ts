@@ -4,9 +4,10 @@ import Feedback from './feedback'
 
 // Question body formats, which dictate how to parse Questions
 
-export const MultipleChoiceFormat = 'MultipleChoice'
-export const FillInFormat = 'FillIn'
-export type QuestionFormat = typeof MultipleChoiceFormat | typeof FillInFormat
+export enum QuestionFormat {
+  MultipleChoiceFormat,
+  FillInFormat,
+}
 
 // ---
 
@@ -17,26 +18,24 @@ export interface QuestionSubmission {
 }
 
 // Concrete body types and the types of their answers
+export interface MultipleChoice {
+  type: QuestionFormat.MultipleChoiceFormat
+  choices: MultipleChoiceAnswer[]
+  answer: number
+}
 
 export interface MultipleChoiceAnswer {
   text: string
 }
 
-export interface MultipleChoice {
-  type: typeof MultipleChoiceFormat
-  choices: MultipleChoiceAnswer[]
-  answer: number
+export interface FillIn {
+  type: QuestionFormat.FillInFormat
+  answer: FillInAnswer
 }
 
 export type FillInAnswer = string
 
-export interface FillIn {
-  type: typeof FillInFormat
-  answer: FillInAnswer
-}
-
 export type QuestionBodyType = MultipleChoice | FillIn
-
 // ---
 
 type Seconds = number
@@ -153,12 +152,12 @@ export class Question {
     private readonly onTimeout?: Function
   ) {
     switch (this.body.type) {
-      case MultipleChoiceFormat:
+      case QuestionFormat.MultipleChoiceFormat:
         this.body.choices.forEach((_, index) => {
           this._frequency = this._frequency.set(index.toString(), 0)
         })
         break
-      case FillInFormat:
+      case QuestionFormat.FillInFormat:
         this._frequency = this._frequency.set(this.body.answer, 0)
         break
     }
@@ -245,12 +244,12 @@ export class Question {
    */
   frequencyOf(response: ResponseType): number {
     switch (response.type) {
-      case MultipleChoiceFormat: {
+      case QuestionFormat.MultipleChoiceFormat: {
         const answer = response.answer.toString()
         return this._frequency.get(answer)!
       }
-      case FillInFormat: {
-        const answer = response.answer
+      case QuestionFormat.FillInFormat: {
+        const answer = <string>response.answer
         return this._frequency.get(answer) ?? 0
       }
       default:
@@ -272,16 +271,16 @@ export class Question {
 
   private updateFrequency(response: ResponseType) {
     switch (response.type) {
-      case MultipleChoiceFormat:
+      case QuestionFormat.MultipleChoiceFormat:
         {
           const answer = response.answer.toString()
           const prev = this._frequency.get(answer)!
           this._frequency = this._frequency.set(answer, prev + 1)
         }
         break
-      case FillInFormat:
+      case QuestionFormat.FillInFormat:
         {
-          const answer = response.answer
+          const answer = <string>response.answer
           const prev = this._frequency.get(answer) ?? 0
           this._frequency = this._frequency.set(answer, prev + 1)
         }
@@ -295,10 +294,10 @@ export class Question {
     }
 
     switch (response.type) {
-      case MultipleChoiceFormat:
+      case QuestionFormat.MultipleChoiceFormat:
         const mcQuestion = this.body as MultipleChoice
         return response.answer === mcQuestion.answer
-      case FillInFormat:
+      case QuestionFormat.FillInFormat:
         const fillInQuestion = this.body as FillIn
         return response.answer === fillInQuestion.answer
     }
@@ -330,13 +329,17 @@ export class Question {
     if (question.body == null || question.body.type == null) {
       errors.push({ field: 'body', value: null })
     } else {
-      switch (question.body.type) {
-        case MultipleChoiceFormat:
-          errors.concat(this.validateMultipleChoiceQuestion(question.body))
-          break
-        case FillInFormat:
-          errors.concat(this.validateFillInQuestion(question.body))
-          break
+      if (!(question.body.type in QuestionFormat)) {
+        errors.push({ field: 'body', value: question.body.type })
+      } else {
+        switch (question.body.type) {
+          case QuestionFormat.MultipleChoiceFormat:
+            errors.concat(this.validateMultipleChoiceQuestion(question.body))
+            break
+          case QuestionFormat.FillInFormat:
+            errors.concat(this.validateFillInQuestion(question.body))
+            break
+        }
       }
     }
 

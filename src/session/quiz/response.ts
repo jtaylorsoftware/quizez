@@ -1,7 +1,7 @@
-import { MultipleChoiceFormat, FillInFormat } from '.'
+import { QuestionFormat } from '.'
 
 export interface MultipleChoiceResponse {
-  type: typeof MultipleChoiceFormat
+  type: QuestionFormat.MultipleChoiceFormat
   /**
    * The name of the user submitting the response
    */
@@ -10,7 +10,7 @@ export interface MultipleChoiceResponse {
 }
 
 export interface FillInResponse {
-  type: typeof FillInFormat
+  type: QuestionFormat.FillInFormat
   /**
    * The name of the user submitting the response
    */
@@ -22,9 +22,9 @@ export type ResponseType = MultipleChoiceResponse | FillInResponse
 
 export function responseToString(response: ResponseType): string {
   switch (response.type) {
-    case MultipleChoiceFormat:
+    case QuestionFormat.MultipleChoiceFormat:
       return response.answer.toString()
-    case FillInFormat:
+    case QuestionFormat.FillInFormat:
       return response.answer
     default:
       return ''
@@ -43,8 +43,7 @@ export function validateResponse(response?: Partial<ResponseType>): boolean {
   }
 
   return (
-    (response.type === FillInFormat ||
-      response.type === MultipleChoiceFormat) &&
+    response.type in QuestionFormat &&
     response.answer !== null &&
     response.submitter !== null
   )

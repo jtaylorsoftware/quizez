@@ -2,7 +2,7 @@ import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
 import { createSocketServer } from 'server'
-import { Feedback, MultipleChoiceFormat, Question, Rating } from 'session/quiz'
+import { Feedback, QuestionFormat, Question, Rating } from 'session/quiz'
 import SessionEvent from 'event'
 import * as requests from 'requests'
 import * as responses from 'responses'
@@ -118,7 +118,7 @@ describe('Server', () => {
       })
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 0,
       })
@@ -138,7 +138,7 @@ describe('Server', () => {
       })
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })
@@ -247,7 +247,7 @@ describe('Server', () => {
       })
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })
@@ -297,7 +297,7 @@ describe('Server', () => {
           name,
           index: 0,
           response: {
-            type: MultipleChoiceFormat,
+            type: QuestionFormat.MultipleChoiceFormat,
             answer: 1,
             submitter: name,
           },
@@ -344,7 +344,7 @@ describe('Server', () => {
       )
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })
@@ -451,7 +451,7 @@ describe('Server', () => {
       }, 750)
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })
@@ -478,7 +478,7 @@ describe('Server', () => {
       })
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })
@@ -527,7 +527,7 @@ describe('Server', () => {
       let ownerReceived = false
 
       const question: Question = new Question('Question', {
-        type: MultipleChoiceFormat,
+        type: QuestionFormat.MultipleChoiceFormat,
         choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
         answer: 1,
       })

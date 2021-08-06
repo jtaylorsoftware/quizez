@@ -3,7 +3,7 @@ jest.mock('socket.io/dist/client')
 import { QuestionEndedSuccess } from 'responses'
 import { SessionController } from 'server/controller'
 import { Session } from 'session'
-import { FillInFormat } from 'session/quiz'
+import { QuestionFormat } from 'session/quiz'
 import { Socket, Server, Namespace } from 'socket.io'
 import { Client } from 'socket.io/dist/client'
 
@@ -56,7 +56,7 @@ describe('SessionController', () => {
         question: {
           text: 'Question',
           body: {
-            type: FillInFormat,
+            type: QuestionFormat.FillInFormat,
             answer: 'Yes',
           },
         },

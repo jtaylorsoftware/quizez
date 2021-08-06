@@ -1,6 +1,6 @@
 jest.mock('session/quiz/question')
 import { nanoid } from 'nanoid'
-import { FillInFormat, Quiz } from 'session/quiz'
+import { QuestionFormat, Quiz } from 'session/quiz'
 import { Question } from 'session/quiz/question'
 
 describe('Quiz', () => {
@@ -52,7 +52,7 @@ describe('Quiz', () => {
 
 function randomFillInQuestion(): Question {
   return new Question(nanoid(), {
-    type: FillInFormat,
+    type: QuestionFormat.FillInFormat,
     answer: nanoid(),
   })
 }

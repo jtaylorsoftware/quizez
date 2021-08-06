@@ -1,4 +1,4 @@
-import { FillInFormat, Question } from 'session/quiz'
+import { QuestionFormat, Question } from 'session/quiz'
 
 const _setTimeoutReal = global.setTimeout
 const _clearTimeoutReal = global.clearTimeout
@@ -44,7 +44,7 @@ describe('Question', () => {
 
   it('should eventually timeout after start()', () => {
     const question = new Question('Question', {
-      type: FillInFormat,
+      type: QuestionFormat.FillInFormat,
       answer: 'Yes',
     })
     question.start()
@@ -61,7 +61,7 @@ describe('Question', () => {
 
   it('should not timeout after manually ending', () => {
     const question = new Question('Question', {
-      type: FillInFormat,
+      type: QuestionFormat.FillInFormat,
       answer: 'Yes',
     })
     question.start()
@@ -82,7 +82,7 @@ describe('Question', () => {
     const question = new Question(
       'Question',
       {
-        type: FillInFormat,
+        type: QuestionFormat.FillInFormat,
         answer: 'Yes',
       },
       Question.minTimeLimit,
