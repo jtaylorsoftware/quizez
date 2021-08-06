@@ -163,6 +163,26 @@ export enum SessionEvent {
    * Session owner receiving Question feedback
    */
   FeedbackSubmitted = 'feedback submitted',
+
+  /**
+   * Session owner sending a hint for a question
+   */
+  SendHint = 'send hint',
+
+  /**
+   * Failure case. See `SendHint`
+   */
+  SendHintFailed = 'send hint failed',
+
+  /**
+   * Success case. See `SendHint`
+   */
+  SendHintSuccess = 'send hint success',
+
+  /**
+   * Users in the session receiving hint
+   */
+  HintReceived = 'hint received',
 }
 
 export default SessionEvent

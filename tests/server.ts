@@ -583,5 +583,64 @@ describe('Server', () => {
         question,
       })
     })
+
+    it('should allow quiz owner to send hints', (done) => {
+      let eventTimeout: NodeJS.Timeout
+      let userReceived = false
+      let ownerReceived = false
+
+      const question: Question = new Question('Question', {
+        type: QuestionFormat.MultipleChoiceFormat,
+        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
+        answer: 1,
+      })
+
+      const hint: requests.SendHint = {
+        session: id,
+        question: 0,
+        hint: 'Hint',
+      }
+
+      sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
+        sessionOwner.emit(SessionEvent.StartSession, { session: id })
+      })
+      sessionOwner.on(SessionEvent.NextQuestion, () => {
+        sessionOwner.emit(SessionEvent.SendHint, hint)
+
+        // Fail if Feedback is not received
+        eventTimeout = setTimeout(() => {
+          expect('No Event').toBe('HintReceived and SendHintSuccess')
+        }, 2000)
+      })
+
+      sessionOwner.on(SessionEvent.SendHintSuccess, () => {
+        ownerReceived = true
+        if (userReceived && ownerReceived) {
+          clearTimeout(eventTimeout)
+          done()
+        }
+      })
+
+      user.on(SessionEvent.HintReceived, (res: responses.HintReceived) => {
+        expect(res.question).toEqual(hint.question)
+        expect(res.hint).toBe(hint.hint)
+        userReceived = true
+        if (userReceived && ownerReceived) {
+          clearTimeout(eventTimeout)
+          done()
+        }
+      })
+
+      user.on(SessionEvent.SessionStarted, () => {
+        sessionOwner.emit(SessionEvent.NextQuestion, {
+          session: id,
+        })
+      })
+
+      sessionOwner.emit(SessionEvent.AddQuestion, {
+        session: id,
+        question,
+      })
+    })
   })
 })

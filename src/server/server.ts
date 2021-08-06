@@ -34,6 +34,8 @@ function configure(io: Server) {
 
     socket.on(SessionEvent.SubmitFeedback, sessionController.submitQuestionFeedback(socket))
 
+    socket.on(SessionEvent.SendHint, sessionController.sendQuestionHint(socket))
+
     socket.on('disconnecting', sessionController.handleDisconnect(socket))
   })
 }

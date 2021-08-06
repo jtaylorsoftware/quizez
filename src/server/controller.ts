@@ -566,6 +566,65 @@ export class SessionController {
   }
 
   /**
+   * Sends a hint for a question to users in the session.
+   * @param socket The client socket that owns the session.
+   */
+  sendQuestionHint(socket: Socket): SessionEventHandler<requests.SendHint> {
+    return (args?: SessionEventArgs<requests.SendHint>) => {
+      if (args == null) {
+        debug('no args passed to sendQuestionHint')
+        this.emit(socket, new responses.SendHintFailed())
+        return
+      }
+
+      // Can only send non-empty hint
+      if (args.hint == null || args.hint.length === 0) {
+        debug('hint null or empty')
+        this.emit(socket, new responses.SendHintFailed())
+        return
+      }
+
+      // Check session exists and this socket created it
+      const session = this.sessions.get(args.session ?? '')
+      if (session == null || session.owner !== socket.id) {
+        debug(
+          `could not find session ${args.session} with owner ${socket.id} to end question`
+        )
+        this.emit(socket, new responses.SendHintFailed(session?.id))
+        return
+      }
+
+      // Can only send hints if quiz has started
+      if (!session.isStarted || session.hasEnded) {
+        debug(`session ${args.session} is not ready`)
+        this.emit(socket, new responses.SendHintFailed(session.id))
+        return
+      }
+
+      // Can only send hint for the current question
+      const currentQuestion = session.quiz.currentQuestion
+      const currentIndex = session.quiz.currentQuestionIndex
+      if (currentQuestion == null || currentIndex !== args.question) {
+        debug(
+          `session ${args.session} quiz is not on the argument question index ${args.question}`
+        )
+        this.emit(socket, new responses.SendHintFailed(session.id))
+        return
+      }
+
+      // Notify sender of success
+      this.emit(socket, new responses.SendHintSuccess(session.id))
+
+      // Send hint to room
+      this.emitExcept(
+        session.id,
+        socket.id,
+        new responses.HintReceived(session.id, args.question, args.hint)
+      )
+    }
+  }
+
+  /**
    * Cleans up resources owned by the client, removing users from Session
    * if an owner disconnects
    * @param socket Client socket that's disconnecting
@@ -631,5 +690,19 @@ export class SessionController {
     } else {
       this.io.to(target).emit(response.event, response)
     }
+  }
+
+  /**
+   * Emits a response to a target ID, except for a specific ID.
+   * @param target an ID string to emit to
+   * @param except an ID string to not emit to
+   * @param response the response to the client
+   */
+  private emitExcept<Response extends responses.EventResponse>(
+    room: string,
+    except: string,
+    response: Response
+  ) {
+    this.io.to(room).except(except).emit(response.event, response)
   }
 }

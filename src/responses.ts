@@ -315,3 +315,39 @@ export class FeedbackSubmitted implements EventResponse {
     readonly feedback: Feedback
   ) {}
 }
+
+export class SendHintFailed implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SendHintFailed
+  }
+
+  constructor(readonly session: string = '') {}
+}
+
+export class SendHintSuccess implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.SendHintSuccess
+  }
+
+  constructor(readonly session: string) {}
+}
+
+export class HintReceived implements EventResponse {
+  get event(): SessionEvent {
+    return SessionEvent.HintReceived
+  }
+
+  constructor(
+    readonly session: string,
+
+    /**
+     * The index of question the hint is for
+     */
+    readonly question: number,
+
+    /**
+     * The hint message
+     */
+    readonly hint: string
+  ) {}
+}

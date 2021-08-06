@@ -126,3 +126,20 @@ export interface SubmitFeedback {
    */
   feedback: Partial<Feedback>
 }
+
+export interface SendHint {
+  /**
+   * Id of the session
+   */
+  session: string
+
+  /**
+   * The question index the hint is for
+   */
+  question: number
+
+  /**
+   * The hint message for the question.
+   */
+  hint: string
+}
