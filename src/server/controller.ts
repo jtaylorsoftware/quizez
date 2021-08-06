@@ -465,6 +465,10 @@ export class SessionController {
         return
       }
 
+      debug(
+        `successfully ended question ${currentIndex} in session ${session.id}`
+      )
+
       // End the question
       currentQuestion.end()
 
@@ -549,6 +553,11 @@ export class SessionController {
         return
       }
 
+      debug(
+        `received feedback for question ${question.index} in session ${session.id}`,
+        feedback
+      )
+
       // Tell session owner that feedback added
       this.emit(
         session.owner,
@@ -611,6 +620,8 @@ export class SessionController {
         this.emit(socket, new responses.SendHintFailed(session.id))
         return
       }
+
+      debug(`${socket.id} sent hint to session ${session.id}`, args.hint)
 
       // Notify sender of success
       this.emit(socket, new responses.SendHintSuccess(session.id))
