@@ -327,8 +327,6 @@ export class SessionController {
 
       if (
         args.index == null ||
-        args.index < 0 ||
-        args.index >= session.quiz.numQuestions ||
         args.index !== session.quiz.currentQuestionIndex
       ) {
         debug(
