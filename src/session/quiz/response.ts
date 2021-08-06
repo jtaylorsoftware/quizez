@@ -19,6 +19,7 @@ export interface FillInResponse {
 }
 
 export type ResponseType = MultipleChoiceResponse | FillInResponse
+
 export function responseToString(response: ResponseType): string {
   switch (response.type) {
     case MultipleChoiceFormat:
@@ -28,4 +29,23 @@ export function responseToString(response: ResponseType): string {
     default:
       return ''
   }
+}
+
+/**
+ * Validates a Response, ensuring it has no missing fields.
+ * @param response Response to check for nulls/undefineds
+ * @returns true if all fields are defined
+ */
+export function validateResponse(response?: Partial<ResponseType>): boolean {
+  // TODO - Return which field is null
+  if (response == null || response.type == null) {
+    return false
+  }
+
+  return (
+    (response.type === FillInFormat ||
+      response.type === MultipleChoiceFormat) &&
+    response.answer !== null &&
+    response.submitter !== null
+  )
 }

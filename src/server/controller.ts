@@ -2,13 +2,20 @@ import { Map } from 'immutable'
 import * as requests from 'requests'
 import * as responses from 'responses'
 import { Session } from 'session'
-import { Feedback, Question, responseToString } from 'session/quiz'
+import {
+  Feedback,
+  Question,
+  responseToString,
+  ResponseType,
+  validateResponse,
+} from 'session/quiz'
 import { User } from 'session/user'
 import { Server, Socket } from 'socket.io'
 
 const debug = require('debug')('app:controller')
 
-type SocketEventHandler<T> = (args?: T) => void
+type SessionEventArgs<T> = Partial<T>
+type SessionEventHandler<T> = (args?: SessionEventArgs<T>) => void
 
 /**
  * Manages sessions - adding, removing, and handling specific actions
@@ -50,7 +57,9 @@ export class SessionController {
    * Creates a new Session with `socket` as its owner
    * @param socket Client socket creating the Session
    */
-  createSession(socket: Socket): SocketEventHandler<requests.CreateNewSession> {
+  createSession(
+    socket: Socket
+  ): SessionEventHandler<requests.CreateNewSession> {
     return () => {
       const session = new Session(socket.id)
       debug(`client ${socket.id} creating session with id ${session.id}`)
@@ -67,8 +76,8 @@ export class SessionController {
    * client id is not the owner
    * @param socket Client socket joining the Session
    */
-  addUserToSession(socket: Socket): SocketEventHandler<requests.JoinSession> {
-    return (args?: requests.JoinSession) => {
+  addUserToSession(socket: Socket): SessionEventHandler<requests.JoinSession> {
+    return (args?: SessionEventArgs<requests.JoinSession>) => {
       if (args == null) {
         debug('no args passed to addUserToSession')
         this.emit(socket, new responses.JoinSessionFailed())
@@ -104,8 +113,8 @@ export class SessionController {
    */
   addQuestionToSession(
     socket: Socket
-  ): SocketEventHandler<requests.AddQuestion> {
-    return (args?: requests.AddQuestion) => {
+  ): SessionEventHandler<requests.AddQuestion> {
+    return (args?: SessionEventArgs<requests.AddQuestion>) => {
       if (args == null) {
         debug('no args passed to addQuestionToSession')
         this.emit(socket, new responses.AddQuestionFailed())
@@ -157,8 +166,8 @@ export class SessionController {
    */
   removeUserFromSession(
     socket: Socket
-  ): SocketEventHandler<requests.SessionKick> {
-    return (args?: requests.SessionKick) => {
+  ): SessionEventHandler<requests.SessionKick> {
+    return (args?: SessionEventArgs<requests.SessionKick>) => {
       if (args == null) {
         debug('no args passed to removeUserFromSession')
         this.emit(socket, new responses.SessionKickFailed())
@@ -198,8 +207,8 @@ export class SessionController {
    * Starts the owner's Session
    * @param socket Client socket owning the Session
    */
-  startSession(socket: Socket): SocketEventHandler<requests.SessionStart> {
-    return (args?: requests.SessionStart) => {
+  startSession(socket: Socket): SessionEventHandler<requests.SessionStart> {
+    return (args?: SessionEventArgs<requests.SessionStart>) => {
       if (args == null) {
         debug('no args passed to startSession')
         this.emit(socket, new responses.SessionStartFailed())
@@ -231,8 +240,8 @@ export class SessionController {
    * Pushes the next question to users
    * @param socket Client socket owning the Session
    */
-  pushNextQuestion(socket: Socket): SocketEventHandler<requests.NextQuestion> {
-    return (args?: requests.NextQuestion) => {
+  pushNextQuestion(socket: Socket): SessionEventHandler<requests.NextQuestion> {
+    return (args?: SessionEventArgs<requests.NextQuestion>) => {
       if (args == null) {
         debug('no args passed to pushNextQuestion')
         this.emit(socket, new responses.NextQuestionFailed())
@@ -286,8 +295,8 @@ export class SessionController {
    */
   addQuestionResponse(
     socket: Socket
-  ): SocketEventHandler<requests.QuestionResponse> {
-    return (args?: requests.QuestionResponse) => {
+  ): SessionEventHandler<requests.QuestionResponse> {
+    return (args?: SessionEventArgs<requests.QuestionResponse>) => {
       if (args == null) {
         debug('no args passed to addQuestionResponse')
         this.emit(socket, new responses.QuestionResponseFailed())
@@ -329,17 +338,18 @@ export class SessionController {
         return
       }
 
-      if (args.response == null) {
+      if (!validateResponse(args.response)) {
         debug(`could not respond to session ${session.id} - args.response null`)
         this.emit(socket, new responses.QuestionResponseFailed(session.id))
         return
       }
+      const response = <ResponseType>args.response
 
       const question = session.quiz.questionAt(args.index)!
       let isCorrect: boolean
 
       try {
-        isCorrect = question.addResponse(args.response)
+        isCorrect = question.addResponse(response)
       } catch (error) {
         debug(`failed to add response to ${session.id} question ${args.index}`)
         this.emit(socket, new responses.QuestionResponseFailed(session.id))
@@ -359,11 +369,11 @@ export class SessionController {
           session.id,
           args.index,
           user.name,
-          responseToString(args.response),
+          responseToString(response),
           isCorrect,
           firstCorrect,
-          question.frequencyOf(args.response),
-          question.relativeFrequencyOf(args.response)
+          question.frequencyOf(response),
+          question.relativeFrequencyOf(response)
         )
       )
 
@@ -384,8 +394,8 @@ export class SessionController {
    * Ends a Session
    * @param socket Client socket that owns the Session
    */
-  endSession(socket: Socket): SocketEventHandler<requests.EndSession> {
-    return (args?: requests.EndSession) => {
+  endSession(socket: Socket): SessionEventHandler<requests.EndSession> {
+    return (args?: SessionEventArgs<requests.EndSession>) => {
       if (args == null) {
         debug('no args passed to endSession')
         this.emit(socket, new responses.SessionEndFailed())
@@ -422,8 +432,10 @@ export class SessionController {
    * Ends the current Question, making it so users cannot respond.
    * @param socket The socket that owns the Session and sent the event.
    */
-  endCurrentQuestion(socket: Socket): SocketEventHandler<requests.EndQuestion> {
-    return (args?: requests.EndQuestion) => {
+  endCurrentQuestion(
+    socket: Socket
+  ): SessionEventHandler<requests.EndQuestion> {
+    return (args?: SessionEventArgs<requests.EndQuestion>) => {
       if (args == null) {
         debug('no args passed to endCurrentQuestion')
         this.emit(socket, new responses.EndQuestionFailed())
@@ -473,8 +485,8 @@ export class SessionController {
    */
   submitQuestionFeedback(
     socket: Socket
-  ): SocketEventHandler<requests.SubmitFeedback> {
-    return (args?: requests.SubmitFeedback) => {
+  ): SessionEventHandler<requests.SubmitFeedback> {
+    return (args?: SessionEventArgs<requests.SubmitFeedback>) => {
       if (args == null) {
         debug('no args passed to submitQuestionFeedback')
         this.emit(socket, new responses.SubmitFeedbackFailed())
@@ -560,7 +572,7 @@ export class SessionController {
    * if an owner disconnects
    * @param socket Client socket that's disconnecting
    */
-  handleDisconnect(socket: Socket): SocketEventHandler<string> {
+  handleDisconnect(socket: Socket): SessionEventHandler<string> {
     return (reason?: string) => {
       const session = this.sessions.find(
         (session) => session.owner === socket.id

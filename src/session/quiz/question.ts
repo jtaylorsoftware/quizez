@@ -12,8 +12,8 @@ export type QuestionFormat = typeof MultipleChoiceFormat | typeof FillInFormat
 
 // Type for Questions received through requests
 export interface QuestionSubmission {
-  text: string | undefined
-  body: QuestionBodyType | undefined
+  text: string
+  body: QuestionBodyType
 }
 
 // Concrete body types and the types of their answers

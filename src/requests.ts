@@ -18,111 +18,111 @@ export interface JoinSession {
   /**
    * The generated id of the session
    */
-  id: string | undefined
+  id: string
 
   /**
    * Client's requested name
    */
-  name: string | undefined
+  name: string
 }
 
 export interface SessionKick {
   /**
    * The id of the session
    */
-  session: string | undefined
+  session: string
 
   /**
    * The name of the user removed
    */
-  name: string | undefined
+  name: string
 }
 
 export interface SessionStart {
   /**
    * The session to start
    */
-  session: string | undefined
+  session: string
 }
 
 export interface EndSession {
   /**
    * The session to end
    */
-  session: string | undefined
+  session: string
 }
 
 export interface EndQuestion {
   /**
    * The id of the session
    */
-  session: string | undefined
+  session: string
 
   /**
    * The question index
    */
-  question: number | undefined
+  question: number
 }
 
 export interface NextQuestion {
   /**
    * The id of the session this applies to
    */
-  session: string | undefined
+  session: string
 }
 
 export interface AddQuestion {
   /**
    * The id of the session to add to
    */
-  session: string | undefined
+  session: string
 
   /**
    * The Question to add
    */
-  question: QuestionSubmission | undefined
+  question: Partial<QuestionSubmission>
 }
 
 export interface QuestionResponse {
   /**
    * The id of the session containing the Question
    */
-  session: string | undefined
+  session: string
 
   /**
    * The name of the user responding
    */
-  name: string | undefined
+  name: string
 
   /**
    * The Question index
    */
-  index: number | undefined
+  index: number
 
   /**
    * The user's response
    */
-  response: ResponseType | undefined
+  response: Partial<ResponseType>
 }
 
 export interface SubmitFeedback {
   /**
    * The id of the session
    */
-  session: string | undefined
+  session: string
 
   /**
    * The name of the user submitting
    */
-  name: string | undefined
+  name: string
 
   /**
    * The index of Question the feedback is for
    */
-  question: number | undefined
+  question: number
 
   /**
    * The feedback
    */
-  feedback: Partial<Feedback> | undefined
+  feedback: Partial<Feedback>
 }
