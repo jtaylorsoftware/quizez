@@ -1,7 +1,8 @@
 jest.mock('session/quiz/question')
 import { nanoid } from 'nanoid'
+import { unwrap } from 'result'
 import { QuestionFormat, Quiz } from 'session/quiz'
-import { Question } from 'session/quiz/question'
+import { Question, QuestionSubmissionBodyType } from 'session/quiz/question'
 
 describe('Quiz', () => {
   // SUT
@@ -51,8 +52,22 @@ describe('Quiz', () => {
 })
 
 function randomFillInQuestion(): Question {
-  return new Question(nanoid(), {
+  const body: QuestionSubmissionBodyType = {
     type: QuestionFormat.FillInFormat,
-    answer: nanoid(),
-  })
+    answers: [
+      { text: nanoid(), points: randomInt(500) },
+      { text: nanoid(), points: randomInt(500) },
+    ],
+  }
+
+  const question = Question.parse(
+    nanoid(),
+    body,
+    Math.max(Question.minTimeLimit, randomInt(Question.maxTimeLimit))
+  )
+  return unwrap(question)
+}
+
+function randomInt(max: number): number {
+  return Math.floor(Math.random() * max)
 }

@@ -57,8 +57,12 @@ describe('SessionController', () => {
           text: 'Question',
           body: {
             type: QuestionFormat.FillInFormat,
-            answer: 'Yes',
+            answers: [
+              { text: 'One', points: 200 },
+              { text: 'Two', points: 200 },
+            ],
           },
+          timeLimit: 60,
         },
       })
 

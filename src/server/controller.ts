@@ -1,6 +1,7 @@
 import { Map } from 'immutable'
 import * as requests from 'requests'
 import * as responses from 'responses'
+import { Result } from 'result'
 import { Session } from 'session'
 import {
   Feedback,
@@ -130,29 +131,32 @@ export class SessionController {
         if (
           args.question == null ||
           args.question.text == null ||
-          args.question.body == null
+          args.question.body == null ||
+          args.question.timeLimit == null
         ) {
           debug('question was missing or missing fields')
           this.emit(socket, new responses.AddQuestionFailed(session.id))
           return
         }
 
-        const { text, body } = args.question
-        const question = new Question(text, body, Question.minTimeLimit, () => {
-          // End the question
-          question.end()
-
-          // Broadcast to users that question ended
-          this.emit(
-            session.id,
-            new responses.QuestionEndedSuccess(session.id, question.index)
-          )
-        })
-        if (Question.validate(question).length !== 0) {
+        const { text, body, timeLimit } = args.question
+        const result = Question.parse(text, body, timeLimit)
+        if (result.type === Result.Failure) {
           debug('question has invalid format')
           this.emit(socket, new responses.AddQuestionFailed(session.id))
         } else {
           debug('question added')
+          const { data: question } = result
+          question.onTimeout = () => {
+            // End the question
+            question.end()
+
+            // Broadcast to users that question ended
+            this.emit(
+              session.id,
+              new responses.QuestionEndedSuccess(session.id, question.index)
+            )
+          }
           session.quiz.addQuestion(question)
           this.emit(socket, new responses.AddQuestionSuccess(session.id))
         }

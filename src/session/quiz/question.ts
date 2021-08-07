@@ -1,4 +1,5 @@
 import { List, Map } from 'immutable'
+import { Result, ResultType } from 'result'
 import { ResponseType } from '.'
 import Feedback from './feedback'
 
@@ -14,7 +15,8 @@ export enum QuestionFormat {
 // Type for Questions received through requests
 export interface QuestionSubmission {
   text: string
-  body: QuestionBodyType
+  timeLimit: number
+  body: QuestionSubmissionBodyType
 }
 
 // Concrete body types and the types of their answers
@@ -24,18 +26,54 @@ export interface MultipleChoice {
   answer: number
 }
 
+export interface MultipleChoiceSubmission {
+  type?: QuestionFormat.MultipleChoiceFormat
+  choices?: MultipleChoiceSubmisisonAnswer[]
+  answer?: number
+}
+
 export interface MultipleChoiceAnswer {
   text: string
+  points: number
 }
+
+export type MultipleChoiceSubmisisonAnswer = Partial<MultipleChoiceAnswer>
 
 export interface FillIn {
   type: QuestionFormat.FillInFormat
-  answer: FillInAnswer
+  /**
+   * Answer map keyed on answer text
+   */
+  answers: Map<string, FillInAnswer>
 }
 
-export type FillInAnswer = string
+export interface FillInSubmission {
+  type?: QuestionFormat.FillInFormat
+  /**
+   * Array of answers submitted by client
+   */
+  answers?: FillInSubmissionAnswer[]
+}
 
+export interface FillInAnswer {
+  text: string
+  points: number
+}
+
+export type FillInSubmissionAnswer = Partial<FillInAnswer>
+
+/**
+ * Type used once Question submission is validated
+ */
 export type QuestionBodyType = MultipleChoice | FillIn
+
+/**
+ * Type submitted directly from client
+ */
+export type QuestionSubmissionBodyType =
+  | MultipleChoiceSubmission
+  | FillInSubmission
+
 // ---
 
 type Seconds = number
@@ -46,6 +84,7 @@ type Seconds = number
 export interface QuestionData {
   text: string
   body: QuestionBodyType
+  totalPoints: number
   timeLimit: Seconds
 }
 
@@ -53,10 +92,29 @@ export interface QuestionData {
  * A varying-type Question, that could be multiple choice or fill-in
  */
 export class Question {
+  static readonly minTimeLimit: Seconds = 60
+  static readonly maxTimeLimit: Seconds = 300
+
+  static readonly minTotalPoints: number = 0
+  static readonly maxTotalPoints: number = 1000
+
+  static readonly minPointsPerAnswer: number = 0
+
+  static readonly minMcChoices: number = 2
+  static readonly maxMcChoices: number = 4
+
+  static readonly minFillInChoices: number = 1
+  static readonly maxFillInChoices: number = 3
+
   /**
    * The index of this Question in its Quiz
    */
   public index: number = -1 // unassigned
+
+  private _totalPoints: number = 0
+  private _text: string = ''
+  private _timeLimit: Seconds = 0
+  public onTimeout?: Function
 
   private _feedback = Map<string, Feedback>() // keyed on username
   private _responses = Map<string, ResponseType>() // keyed on username
@@ -64,11 +122,30 @@ export class Question {
   private _firstCorrect: string | undefined
   private _isStarted: boolean = false
   private _hasEnded: boolean = false
+  private _body?: QuestionBodyType
 
   private timeout!: NodeJS.Timeout
 
-  static readonly minTimeLimit: Seconds = 60
-  static readonly maxTimeLimit: Seconds = 300
+  /**
+   * Total point value of the Question
+   */
+  get totalPoints(): number {
+    return this._totalPoints
+  }
+
+  /**
+   * The text of the Question, or what is being asked
+   */
+  get text(): string {
+    return this._text
+  }
+
+  /**
+   * The time users have to answer the Question
+   */
+  get timeLimit(): Seconds {
+    return this._timeLimit
+  }
 
   /**
    * Returns the data to transmit for this Question
@@ -76,9 +153,17 @@ export class Question {
   get data(): QuestionData {
     return {
       text: this.text,
-      body: this.body,
+      body: this.body!,
+      totalPoints: this.totalPoints,
       timeLimit: this.timeLimit,
     }
+  }
+
+  /**
+   * The body of the Question
+   */
+  get body(): QuestionBodyType {
+    return this._body!
   }
 
   /**
@@ -139,29 +224,64 @@ export class Question {
   }
 
   /**
-   * Creates a Question
+   * Parses a Question from client submitted data
    * @param text The main text of the Question (what is used by responders to determine answer)
-   * @param body The answer type and answer choices for the question
+   * @param body The submitted question body for the Question
    * @param timeLimit The time to answer the question
-   * @param onTimeout Optional callback function when question has timed out
+   * @returns Result containing either the Question or validation errors
    */
-  constructor(
-    readonly text: string,
-    readonly body: QuestionBodyType,
-    readonly timeLimit: Seconds = Question.minTimeLimit,
-    private readonly onTimeout?: Function
-  ) {
-    switch (this.body.type) {
-      case QuestionFormat.MultipleChoiceFormat:
-        this.body.choices.forEach((_, index) => {
-          this._frequency = this._frequency.set(index.toString(), 0)
-        })
-        break
-      case QuestionFormat.FillInFormat:
-        this._frequency = this._frequency.set(this.body.answer, 0)
-        break
+  static parse(
+    text: string,
+    body: QuestionSubmissionBodyType,
+    timeLimit: Seconds
+  ): ResultType<Question, QuestionError> {
+    const question = new Question()
+    question._text = text
+    question._timeLimit = timeLimit
+    let actualTotalPoints: number = 0
+
+    if (body != null && body.type != null && body.type in QuestionFormat) {
+      // Prepopulate frequency map and count actual total points
+      switch (body.type) {
+        case QuestionFormat.MultipleChoiceFormat:
+          if (body.choices != null) {
+            body.choices.forEach((choice, index) => {
+              actualTotalPoints =
+                actualTotalPoints + (choice.points ?? -1 * actualTotalPoints) // reset total if any point value is undefined
+              question._frequency = question._frequency.set(index.toString(), 0)
+            })
+            question._body = { ...body } as MultipleChoice
+          }
+          break
+        case QuestionFormat.FillInFormat:
+          if (body.answers != null) {
+            const answers = body.answers as FillInAnswer[]
+            const answerMap = Map<string, FillInAnswer>()
+            answers.forEach((answer, _) => {
+              actualTotalPoints =
+                actualTotalPoints + (answer.points ?? -1 * actualTotalPoints)
+              answerMap.set(answer.text, answer) // populate a mapping of answer text to answer
+              question._frequency = question._frequency.set(answer.text, 0)
+            })
+            question._body = { ...body, answers: answerMap } as FillIn
+          }
+          break
+      }
     }
+
+    const errors = Question.validate(question)
+    return errors.length === 0
+      ? {
+          type: Result.Success,
+          data: question,
+        }
+      : {
+          type: Result.Failure,
+          errors,
+        }
   }
+
+  private constructor() {}
 
   /**
    * Opens the question to responses
@@ -262,9 +382,16 @@ export class Question {
    * @returns the copy of the Question
    */
   clone(): Question {
-    const copy = new Question(this.text, this.body)
+    const copy = new Question()
+    copy._text = this.text
+    copy._body = this.body
+    copy._timeLimit = this.timeLimit
+    copy.onTimeout = this.onTimeout
     copy._firstCorrect = this._firstCorrect
     copy._frequency = this._frequency
+    copy._responses = this._responses
+    copy._hasEnded = this._hasEnded
+    copy._isStarted = this._isStarted
     copy._responses = this._responses
     return copy
   }
@@ -298,12 +425,12 @@ export class Question {
         const mcQuestion = this.body as MultipleChoice
         return response.answer === mcQuestion.answer
       case QuestionFormat.FillInFormat:
-        const fillInQuestion = this.body as FillIn
-        return response.answer === fillInQuestion.answer
+        const answers = <Map<string, FillInAnswer>>(this.body as FillIn).answers
+        return answers.has(response.answer)
     }
   }
 
-  static validate(question: Partial<Question>): QuestionError[] {
+  private static validate(question: Partial<Question>): QuestionError[] {
     const errors: QuestionError[] = []
 
     if (question.text == null || question.text.length === 0) {
@@ -315,6 +442,18 @@ export class Question {
             : question.text /** convert undefined to null (or value) */,
       })
     }
+
+    if (
+      question.totalPoints == null ||
+      question.totalPoints > this.maxTotalPoints ||
+      question.totalPoints < this.minTotalPoints
+    ) {
+      errors.push({
+        field: 'totalPoints',
+        value: question.totalPoints == null ? null : question.totalPoints,
+      })
+    }
+
     if (
       question.timeLimit == null ||
       question.timeLimit < Question.minTimeLimit ||
@@ -326,8 +465,10 @@ export class Question {
       })
     }
 
-    if (question.body == null || question.body.type == null) {
+    if (question.body == null) {
       errors.push({ field: 'body', value: null })
+    } else if (question.body.type == null) {
+      errors.push({ field: 'body', value: { field: 'type', value: null } })
     } else {
       if (!(question.body.type in QuestionFormat)) {
         errors.push({ field: 'body', value: question.body.type })
@@ -364,7 +505,21 @@ export class Question {
         if (choice.text == null || choice.text.length === 0) {
           errors.push({
             field: 'choices',
-            value: { index, value: choice.text == null ? null : choice.text },
+            value: {
+              field: 'text',
+              index,
+              value: choice.text == null ? null : choice.text,
+            },
+          })
+        }
+        if (choice.points == null || choice.points < this.minPointsPerAnswer) {
+          errors.push({
+            field: 'answers',
+            value: {
+              field: 'points',
+              index,
+              value: choice.points == null ? null : choice.points,
+            },
           })
         }
       })
@@ -385,15 +540,43 @@ export class Question {
   }
 
   private static validateFillInQuestion(question: FillIn): QuestionError[] {
-    if (question.answer == null || question.answer.length === 0) {
-      return [
-        {
-          field: 'answer',
-          value: question.answer == null ? null : question.answer,
-        },
-      ]
+    const errors = <QuestionError[]>[]
+    const answers = question.answers as Map<string, FillInAnswer>
+    if (
+      answers == null ||
+      answers.size < this.minFillInChoices ||
+      answers.size > this.maxFillInChoices
+    ) {
+      errors.push({
+        field: 'answers',
+        value: answers == null ? null : answers,
+      })
+    } else {
+      answers.toIndexedSeq().forEach((answer, index) => {
+        if (answer.text == null || answer.text.length === 0) {
+          errors.push({
+            field: 'answers',
+            value: {
+              field: 'text',
+              index,
+              value: answer.text == null ? null : answer.text,
+            },
+          })
+        }
+        if (answer.points == null || answer.points < this.minPointsPerAnswer) {
+          errors.push({
+            field: 'answers',
+            value: {
+              field: 'points',
+              index,
+              value: answer.points == null ? null : answer.points,
+            },
+          })
+        }
+      })
     }
-    return []
+
+    return errors
   }
 }
 

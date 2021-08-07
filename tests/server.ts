@@ -1,11 +1,17 @@
+import SessionEvent from 'event'
 import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
-import { createSocketServer } from 'server'
-import { Feedback, QuestionFormat, Question, Rating } from 'session/quiz'
-import SessionEvent from 'event'
 import * as requests from 'requests'
 import * as responses from 'responses'
+import { createSocketServer } from 'server'
+import {
+  Feedback,
+  Question,
+  QuestionFormat,
+  QuestionSubmission,
+  Rating,
+} from 'session/quiz'
 import { io, Socket } from 'socket.io-client'
 
 describe('Server', () => {
@@ -117,11 +123,18 @@ describe('Server', () => {
         done()
       })
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 0,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
       sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
         question,
@@ -137,11 +150,18 @@ describe('Server', () => {
         done()
       })
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       user.emit(SessionEvent.AddQuestion, {
         session: id,
@@ -246,11 +266,18 @@ describe('Server', () => {
         }, 2000)
       })
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       user.on(SessionEvent.NextQuestion, (res: responses.NextQuestion) => {
         if (res.question.text === question.text) {
@@ -343,11 +370,18 @@ describe('Server', () => {
         }
       )
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 1,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       sessionOwner.emit(SessionEvent.AddQuestion, {
         session: id,
@@ -450,11 +484,18 @@ describe('Server', () => {
         done()
       }, 750)
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       sessionOwner.on(SessionEvent.AddQuestionSuccess, () => {
         sessionOwner.emit(SessionEvent.NextQuestion, { session: id })
@@ -477,11 +518,18 @@ describe('Server', () => {
         })
       })
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       user.on(SessionEvent.QuestionEnded, () => {
         userReceived = true
@@ -526,11 +574,18 @@ describe('Server', () => {
       let userReceived = false
       let ownerReceived = false
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       const feedbackSubmission: requests.SubmitFeedback = {
         session: id,
@@ -589,11 +644,18 @@ describe('Server', () => {
       let userReceived = false
       let ownerReceived = false
 
-      const question: Question = new Question('Question', {
-        type: QuestionFormat.MultipleChoiceFormat,
-        choices: [{ text: 'Choice One' }, { text: 'Choice Two' }],
-        answer: 1,
-      })
+      const question: QuestionSubmission = {
+        text: 'Question',
+        body: {
+          type: QuestionFormat.MultipleChoiceFormat,
+          choices: [
+            { text: 'Choice One', points: 200 },
+            { text: 'Choice Two', points: 200 },
+          ],
+          answer: 0,
+        },
+        timeLimit: Question.minTimeLimit,
+      }
 
       const hint: requests.SendHint = {
         session: id,
