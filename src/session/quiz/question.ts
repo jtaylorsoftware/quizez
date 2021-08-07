@@ -236,40 +236,15 @@ export class Question {
     timeLimit: Seconds
   ): ResultType<Question, QuestionError> {
     const question = new Question()
+
+    // Copy over simple fields to validate later
     question._text = text
     question._timeLimit = timeLimit
-    let actualTotalPoints: number = 0
 
-    if (body != null && body.type != null && body.type in QuestionFormat) {
-      // Prepopulate frequency map and count actual total points
-      switch (body.type) {
-        case QuestionFormat.MultipleChoiceFormat:
-          if (body.choices != null) {
-            body.choices.forEach((choice, index) => {
-              actualTotalPoints =
-                actualTotalPoints + (choice.points ?? -1 * actualTotalPoints) // reset total if any point value is undefined
-              question._frequency = question._frequency.set(index.toString(), 0)
-            })
-            question._body = { ...body } as MultipleChoice
-          }
-          break
-        case QuestionFormat.FillInFormat:
-          if (body.answers != null) {
-            const answers = body.answers as FillInAnswer[]
-            const answerMap = Map<string, FillInAnswer>()
-            answers.forEach((answer, _) => {
-              actualTotalPoints =
-                actualTotalPoints + (answer.points ?? -1 * actualTotalPoints)
-              answerMap.set(answer.text, answer) // populate a mapping of answer text to answer
-              question._frequency = question._frequency.set(answer.text, 0)
-            })
-            question._body = { ...body, answers: answerMap } as FillIn
-          }
-          break
-      }
-    }
+    // Parse body into expected type for validation
+    this.parseQuestionSubmissionBody(body, question)
 
-    const errors = Question.validate(question)
+    const errors = this.validate(question)
     return errors.length === 0
       ? {
           type: Result.Success,
@@ -279,6 +254,58 @@ export class Question {
           type: Result.Failure,
           errors,
         }
+  }
+
+  private static parseQuestionSubmissionBody(
+    body: QuestionSubmissionBodyType,
+    outQuestion: Question
+  ) {
+    if (body != null && body.type != null && body.type in QuestionFormat) {
+      // Prepopulate frequency map and count actual total points
+      switch (body.type) {
+        case QuestionFormat.MultipleChoiceFormat:
+          this.parseMultipleChoiceSubmission(body, outQuestion)
+          break
+        case QuestionFormat.FillInFormat:
+          this.parseFillInSubmission(body, outQuestion)
+          break
+      }
+    }
+  }
+
+  private static parseMultipleChoiceSubmission(
+    body: MultipleChoiceSubmission,
+    outQuestion: Question
+  ) {
+    let actualTotalPoints: number = 0
+    if (body.choices != null) {
+      body.choices.forEach((choice, index) => {
+        actualTotalPoints =
+          actualTotalPoints + (choice.points ?? -1 * actualTotalPoints) // reset total if any point value is undefined
+        outQuestion._frequency = outQuestion._frequency.set(index.toString(), 0)
+      })
+      outQuestion._body = { ...body } as MultipleChoice
+    }
+    outQuestion._totalPoints = actualTotalPoints
+  }
+
+  private static parseFillInSubmission(
+    body: FillInSubmission,
+    outQuestion: Question
+  ) {
+    let actualTotalPoints: number = 0
+    if (body.answers != null) {
+      const answers = body.answers as FillInAnswer[]
+      const answerMap = Map<string, FillInAnswer>()
+      answers.forEach((answer, _) => {
+        actualTotalPoints =
+          actualTotalPoints + (answer.points ?? -1 * actualTotalPoints)
+        answerMap.set(answer.text, answer) // populate a mapping of answer text to answer
+        outQuestion._frequency = outQuestion._frequency.set(answer.text, 0)
+      })
+      outQuestion._body = { ...body, answers: answerMap } as FillIn
+    }
+    outQuestion._totalPoints = actualTotalPoints
   }
 
   private constructor() {}
@@ -386,6 +413,7 @@ export class Question {
     copy._text = this.text
     copy._body = this.body
     copy._timeLimit = this.timeLimit
+    copy._totalPoints = this.totalPoints
     copy.onTimeout = this.onTimeout
     copy._firstCorrect = this._firstCorrect
     copy._frequency = this._frequency
@@ -433,57 +461,87 @@ export class Question {
   private static validate(question: Partial<Question>): QuestionError[] {
     const errors: QuestionError[] = []
 
-    if (question.text == null || question.text.length === 0) {
-      errors.push({
-        field: 'text',
-        value:
-          question.text == null
-            ? null
-            : question.text /** convert undefined to null (or value) */,
-      })
-    }
+    errors.concat(this.validateQuestionText(question.text))
+    errors.concat(this.validateQuestionPoints(question.totalPoints))
+    errors.concat(this.validateQuestionTimeLimit(question.timeLimit))
+    errors.concat(this.validateQuestionBody(question.body))
 
+    return errors
+  }
+
+  private static validateQuestionText(text?: string): QuestionError[] {
+    if (text == null || text.length === 0) {
+      return [
+        {
+          field: 'text',
+          value:
+            text == null
+              ? null
+              : text /** convert undefined to null (or value) */,
+        },
+      ]
+    }
+    return []
+  }
+
+  private static validateQuestionPoints(totalPoints?: number): QuestionError[] {
     if (
-      question.totalPoints == null ||
-      question.totalPoints > this.maxTotalPoints ||
-      question.totalPoints < this.minTotalPoints
+      totalPoints == null ||
+      totalPoints > this.maxTotalPoints ||
+      totalPoints < this.minTotalPoints
     ) {
-      errors.push({
-        field: 'totalPoints',
-        value: question.totalPoints == null ? null : question.totalPoints,
-      })
+      return [
+        {
+          field: 'totalPoints',
+          value: totalPoints == null ? null : totalPoints,
+        },
+      ]
     }
 
+    return []
+  }
+
+  private static validateQuestionTimeLimit(
+    timeLimit?: number
+  ): QuestionError[] {
     if (
-      question.timeLimit == null ||
-      question.timeLimit < Question.minTimeLimit ||
-      question.timeLimit > Question.maxTimeLimit
+      timeLimit == null ||
+      timeLimit < Question.minTimeLimit ||
+      timeLimit > Question.maxTimeLimit
     ) {
-      errors.push({
-        field: 'timeLimit',
-        value: question.timeLimit == null ? null : question.timeLimit,
-      })
+      return [
+        {
+          field: 'timeLimit',
+          value: timeLimit == null ? null : timeLimit,
+        },
+      ]
     }
 
-    if (question.body == null) {
+    return []
+  }
+
+  private static validateQuestionBody(
+    body?: QuestionBodyType
+  ): QuestionError[] {
+    const errors = <QuestionError[]>[]
+    if (body == null) {
       errors.push({ field: 'body', value: null })
-    } else if (question.body.type == null) {
+    } else if (body.type == null) {
       errors.push({ field: 'body', value: { field: 'type', value: null } })
     } else {
-      if (!(question.body.type in QuestionFormat)) {
-        errors.push({ field: 'body', value: question.body.type })
+      if (!(body.type in QuestionFormat)) {
+        errors.push({ field: 'body', value: body.type })
       } else {
-        switch (question.body.type) {
+        switch (body.type) {
           case QuestionFormat.MultipleChoiceFormat:
-            errors.concat(this.validateMultipleChoiceQuestion(question.body))
+            errors.concat(this.validateMultipleChoiceQuestion(body))
             break
           case QuestionFormat.FillInFormat:
-            errors.concat(this.validateFillInQuestion(question.body))
+            errors.concat(this.validateFillInQuestion(body))
             break
         }
       }
     }
-
     return errors
   }
 
