@@ -6,7 +6,7 @@ import {
   Seconds,
 } from 'api/question'
 import { List, Map } from 'immutable'
-import { Feedback } from 'session/quiz/feedback'
+import { Feedback } from 'session/quiz/question/feedback'
 
 /**
  * A varying-type Question, that could be multiple choice or fill-in

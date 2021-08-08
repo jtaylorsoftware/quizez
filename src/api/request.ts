@@ -1,5 +1,5 @@
 import { QuestionSubmission, ResponseType } from './question'
-import Feedback from 'session/quiz/feedback'
+import Feedback from 'session/quiz/question/feedback'
 
 /**
  *
