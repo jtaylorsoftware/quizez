@@ -1,4 +1,4 @@
-import { QuestionFormat } from '.'
+import { QuestionFormat } from 'session/quiz'
 
 export interface MultipleChoiceResponse {
   type: QuestionFormat.MultipleChoiceFormat
