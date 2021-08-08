@@ -1,4 +1,4 @@
-import { QuestionError } from 'api/error'
+import { ApiError } from 'api/error'
 import {
   FillIn,
   FillInAnswer,
@@ -38,7 +38,7 @@ export default class FillInQuestion extends Question {
     text?: string,
     body?: FillInSubmission,
     timeLimit?: Seconds
-  ): ResultType<FillInQuestion, QuestionError> {
+  ): ResultType<FillInQuestion, ApiError> {
     const result = validateSubmission(text, body, timeLimit)
     if (result.type === Result.Failure) {
       return result
@@ -64,8 +64,8 @@ export default class FillInQuestion extends Question {
     }
   }
 
-  private static validateBody(body: FillInSubmission): QuestionError[] {
-    let errors = <QuestionError[]>[]
+  private static validateBody(body: FillInSubmission): ApiError[] {
+    let errors = <ApiError[]>[]
     const answers = body.answers
     if (
       answers == null ||

@@ -1,9 +1,5 @@
+import { ApiError } from 'api/error'
 import * as api from 'api/feedback'
-
-export interface FeedbackError {
-  field: keyof Feedback
-  value?: any
-}
 
 export class Feedback implements api.Feedback {
   static readonly maxMessageCharacters = 100
@@ -14,8 +10,8 @@ export class Feedback implements api.Feedback {
    * Validates this Feedback against property constraints
    * @returns failed constraints
    */
-  static validate(feedback: Partial<Feedback>): FeedbackError[] {
-    const errors: FeedbackError[] = []
+  static validate(feedback: Partial<Feedback>): ApiError[] {
+    const errors: ApiError[] = []
     if (feedback.rating == null || !(feedback.rating in api.Rating)) {
       errors.push({
         field: 'rating',

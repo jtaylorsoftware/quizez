@@ -1,4 +1,4 @@
-import { QuestionError } from 'api/error'
+import { ApiError } from 'api/error'
 import {
   QuestionBodyType,
   QuestionData,
@@ -232,7 +232,7 @@ export abstract class Question {
 
   protected abstract gradeResponse(response: ResponseType): number
 
-  protected static validateQuestionText(text: string): QuestionError[] {
+  protected static validateQuestionText(text: string): ApiError[] {
     if (text.length === 0) {
       return [
         {
@@ -247,9 +247,7 @@ export abstract class Question {
     return []
   }
 
-  protected static validateQuestionPoints(
-    totalPoints: number
-  ): QuestionError[] {
+  protected static validateQuestionPoints(totalPoints: number): ApiError[] {
     if (totalPoints < this.minTotalPoints) {
       return [
         {
@@ -262,9 +260,7 @@ export abstract class Question {
     return []
   }
 
-  protected static validateQuestionTimeLimit(
-    timeLimit: number
-  ): QuestionError[] {
+  protected static validateQuestionTimeLimit(timeLimit: number): ApiError[] {
     if (
       timeLimit < Question.minTimeLimit ||
       timeLimit > Question.maxTimeLimit

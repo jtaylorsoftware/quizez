@@ -1,5 +1,5 @@
 import { Result, ResultType } from 'result'
-import { QuestionError } from 'api/error'
+import { ApiError } from 'api/error'
 import FillInQuestion from './fillin'
 import MultipleChoiceQuestion from './multiplechoice'
 import Question from './question'
@@ -22,8 +22,8 @@ export function validateSubmission(
   text?: string,
   body?: QuestionSubmissionBodyType,
   timeLimit?: Seconds
-): ResultType<QuestionBodyType, QuestionError> {
-  const errors: QuestionError[] = []
+): ResultType<QuestionBodyType, ApiError> {
+  const errors: ApiError[] = []
 
   if (text == null) {
     errors.push({ field: 'text', value: null })
@@ -68,7 +68,7 @@ export function validateSubmission(
  */
 export function fromSubmission(
   submission: QuestionSubmission
-): ResultType<Question, QuestionError> {
+): ResultType<Question, ApiError> {
   const { text, body, timeLimit } = submission
   if (body != null && body.type != null && body.type in QuestionFormat) {
     switch (body.type) {

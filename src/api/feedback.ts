@@ -6,11 +6,6 @@ export enum Rating {
   Easy,
 }
 
-export interface FeedbackError {
-  field: keyof Feedback
-  value?: any
-}
-
 export interface Feedback {
   rating: number
   message: string

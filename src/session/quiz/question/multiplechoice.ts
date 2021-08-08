@@ -1,4 +1,4 @@
-import { QuestionError } from 'api/error'
+import { ApiError } from 'api/error'
 import {
   MultipleChoice,
   MultipleChoiceAnswer,
@@ -49,7 +49,7 @@ export default class MultipleChoiceQuestion
     text?: string,
     body?: MultipleChoiceSubmission,
     timeLimit?: Seconds
-  ): ResultType<MultipleChoiceQuestion, QuestionError> {
+  ): ResultType<MultipleChoiceQuestion, ApiError> {
     const result = validateSubmission(text, body, timeLimit)
     if (result.type === Result.Failure) {
       return result
@@ -74,8 +74,8 @@ export default class MultipleChoiceQuestion
         }
   }
 
-  private static validateBody(body: MultipleChoiceSubmission): QuestionError[] {
-    let errors = <QuestionError[]>[]
+  private static validateBody(body: MultipleChoiceSubmission): ApiError[] {
+    let errors = <ApiError[]>[]
     if (
       body.choices == null ||
       body.choices.length < 2 ||
