@@ -1,8 +1,39 @@
-jest.mock('session/quiz/question')
 import { nanoid } from 'nanoid'
 import { unwrap } from 'result'
 import { QuestionFormat, Quiz } from 'session/quiz'
-import { Question, QuestionSubmissionBodyType } from 'session/quiz/question'
+import {
+  FillIn,
+  fromSubmission,
+  MultipleChoice,
+  Question,
+  QuestionSubmission,
+  QuestionSubmissionBodyType,
+} from 'session/quiz/question'
+import FillInQuestion from 'session/quiz/question/fillin'
+import MultipleChoiceQuestion from 'session/quiz/question/multiplechoice'
+
+jest.mock('session/quiz/question/question')
+jest.mock('session/quiz/question/fillin')
+jest.mock('session/quiz/question/multiplechoice')
+jest.mock('session/quiz/question/submission', () => {
+  return {
+    fromSubmission: jest.fn((submission: QuestionSubmission) => {
+      const { text, body, timeLimit } = submission
+      switch (submission.body!.type) {
+        case QuestionFormat.MultipleChoiceFormat:
+          return {
+            data: new MultipleChoiceQuestion(
+              text!,
+              body as MultipleChoice,
+              timeLimit!
+            ),
+          }
+        case QuestionFormat.FillInFormat:
+          return { data: new FillInQuestion(text!, body as FillIn, timeLimit!) }
+      }
+    }),
+  }
+})
 
 describe('Quiz', () => {
   // SUT
@@ -55,19 +86,24 @@ function randomFillInQuestion(): Question {
   const body: QuestionSubmissionBodyType = {
     type: QuestionFormat.FillInFormat,
     answers: [
-      { text: nanoid(), points: randomInt(500) },
-      { text: nanoid(), points: randomInt(500) },
+      { text: nanoid(), points: randomInt(50, 100) },
+      { text: nanoid(), points: randomInt(50, 100) },
     ],
   }
 
-  const question = Question.parse(
-    nanoid(),
+  const question = fromSubmission({
+    text: nanoid(),
     body,
-    Math.max(Question.minTimeLimit, randomInt(Question.maxTimeLimit))
-  )
+    timeLimit: randomInt(Question.minTimeLimit, Question.maxTimeLimit),
+  })
   return unwrap(question)
 }
 
-function randomInt(max: number): number {
-  return Math.floor(Math.random() * max)
+function randomInt(min: number, max: number): number {
+  if (max < min) {
+    let t = max
+    max = min
+    min = t
+  }
+  return Math.max(min, Math.floor(Math.random() * max))
 }

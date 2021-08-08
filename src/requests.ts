@@ -80,7 +80,7 @@ export interface AddQuestion {
   /**
    * The Question to add
    */
-  question: Partial<QuestionSubmission>
+  question: QuestionSubmission
 }
 
 export interface QuestionResponse {

@@ -5,7 +5,7 @@ import { Result } from 'result'
 import { Session } from 'session'
 import {
   Feedback,
-  Question,
+  fromSubmission,
   responseToString,
   ResponseType,
   validateResponse,
@@ -139,8 +139,7 @@ export class SessionController {
           return
         }
 
-        const { text, body, timeLimit } = args.question
-        const result = Question.parse(text, body, timeLimit)
+        const result = fromSubmission(args.question)
         if (result.type === Result.Failure) {
           debug('question has invalid format')
           this.emit(socket, new responses.AddQuestionFailed(session.id))

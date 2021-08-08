@@ -1,5 +1,5 @@
 import { unwrap } from 'result'
-import { QuestionFormat, Question } from 'session/quiz'
+import { fromSubmission, Question, QuestionFormat } from 'session/quiz'
 
 const _setTimeoutReal = global.setTimeout
 const _clearTimeoutReal = global.clearTimeout
@@ -43,38 +43,20 @@ describe('Question', () => {
     _clearTimeoutReal(_handle)
   })
 
-  it('should successfully validate a valid Question', () => {
-    const question = unwrap(
-      Question.parse(
-        'Question',
-        {
-          type: QuestionFormat.FillInFormat,
-          answers: [
-            { text: 'One', points: 200 },
-            { text: 'Two', points: 200 },
-          ],
-        },
-        Question.minTimeLimit
-      )
-    )
-    expect(question).not.toBeUndefined()
-  })
-
   it('should eventually timeout after start()', () => {
     const question = unwrap(
-      Question.parse(
-        'Question',
-        {
+      fromSubmission({
+        text: 'Question',
+        body: {
           type: QuestionFormat.FillInFormat,
           answers: [
-            { text: 'One', points: 200 },
-            { text: 'Two', points: 200 },
+            { text: 'One', points: 50 },
+            { text: 'Two', points: 50 },
           ],
         },
-        Question.minTimeLimit
-      )
+        timeLimit: Question.minTimeLimit,
+      })
     )
-
     question.start()
 
     // start() should set up a setTimeout call
@@ -89,17 +71,17 @@ describe('Question', () => {
 
   it('should not timeout after manually ending', () => {
     const question = unwrap(
-      Question.parse(
-        'Question',
-        {
+      fromSubmission({
+        text: 'Question',
+        body: {
           type: QuestionFormat.FillInFormat,
           answers: [
-            { text: 'One', points: 200 },
-            { text: 'Two', points: 200 },
+            { text: 'One', points: 50 },
+            { text: 'Two', points: 50 },
           ],
         },
-        Question.minTimeLimit
-      )
+        timeLimit: Question.minTimeLimit,
+      })
     )
     question.start()
     question.end()
@@ -117,17 +99,17 @@ describe('Question', () => {
   it('should call its onTimeout method on timeout', () => {
     const onTimeout = jest.fn(() => {})
     const question = unwrap(
-      Question.parse(
-        'Question',
-        {
+      fromSubmission({
+        text: 'Question',
+        body: {
           type: QuestionFormat.FillInFormat,
           answers: [
-            { text: 'One', points: 200 },
-            { text: 'Two', points: 200 },
+            { text: 'One', points: 50 },
+            { text: 'Two', points: 50 },
           ],
         },
-        Question.minTimeLimit
-      )
+        timeLimit: Question.minTimeLimit,
+      })
     )
     question.onTimeout = onTimeout
     question.start()
