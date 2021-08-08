@@ -1,10 +1,10 @@
 jest.mock('socket.io')
 jest.mock('socket.io/dist/client')
-import { QuestionEndedSuccess } from 'responses'
+import { QuestionFormat } from 'api/question'
+import { QuestionEndedSuccess } from 'api/response'
 import { SessionController } from 'server/controller'
 import { Session } from 'session'
-import { QuestionFormat } from 'session/quiz'
-import { Socket, Server, Namespace } from 'socket.io'
+import { Namespace, Server, Socket } from 'socket.io'
 import { Client } from 'socket.io/dist/client'
 
 describe('SessionController', () => {

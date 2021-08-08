@@ -1,13 +1,17 @@
+import { QuestionError } from 'api/error'
+import {
+  QuestionBodyType,
+  QuestionData,
+  ResponseType,
+  Seconds,
+} from 'api/question'
 import { List, Map } from 'immutable'
 import { Feedback } from 'session/quiz/feedback'
-import { ResponseType } from 'session/quiz/response'
-import { QuestionError } from './error'
-import { QuestionBodyType, QuestionData, Seconds } from './types'
 
 /**
  * A varying-type Question, that could be multiple choice or fill-in
  */
-export abstract class Question implements QuestionData {
+export abstract class Question {
   static readonly minTimeLimit: Seconds = 60
   static readonly maxTimeLimit: Seconds = 300
 

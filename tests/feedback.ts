@@ -1,4 +1,5 @@
-import { Feedback, Rating } from 'session/quiz'
+import { Rating } from 'api/feedback'
+import { Feedback } from 'session/quiz'
 
 describe('Feedback', () => {
   describe('validate', () => {

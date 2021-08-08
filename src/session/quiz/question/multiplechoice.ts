@@ -1,15 +1,16 @@
-import { Result, ResultType } from 'result'
+import { QuestionError } from 'api/error'
 import {
   MultipleChoice,
   MultipleChoiceAnswer,
+  MultipleChoiceSubmission,
   QuestionBodyType,
   QuestionFormat,
+  ResponseType,
   Seconds,
-} from './types'
-import { MultipleChoiceSubmission, validateSubmission } from './submission'
-import { ResponseType } from 'session/quiz/response'
-import { QuestionError } from './error'
+} from 'api/question'
+import { Result, ResultType } from 'result'
 import Question from './question'
+import { validateSubmission } from './submission'
 
 export default class MultipleChoiceQuestion
   extends Question

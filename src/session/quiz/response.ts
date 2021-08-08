@@ -1,24 +1,4 @@
-import { QuestionFormat } from 'session/quiz'
-
-export interface MultipleChoiceResponse {
-  type: QuestionFormat.MultipleChoiceFormat
-  /**
-   * The name of the user submitting the response
-   */
-  submitter: string
-  answer: number
-}
-
-export interface FillInResponse {
-  type: QuestionFormat.FillInFormat
-  /**
-   * The name of the user submitting the response
-   */
-  submitter: string
-  answer: string
-}
-
-export type ResponseType = MultipleChoiceResponse | FillInResponse
+import { QuestionFormat, ResponseType } from 'api/question'
 
 export function responseToString(response: ResponseType): string {
   switch (response.type) {

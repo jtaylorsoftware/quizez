@@ -3,6 +3,11 @@
  */
 export enum SessionEvent {
   /**
+   * Placeholder for base event type
+   */
+  Unused = 'unused',
+
+  /**
    * A client is creating a new joinable Session
    */
   CreateNewSession = 'create session',

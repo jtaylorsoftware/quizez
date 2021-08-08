@@ -1,46 +1,15 @@
 import { Result, ResultType } from 'result'
-import { QuestionError } from './error'
+import { QuestionError } from 'api/error'
 import FillInQuestion from './fillin'
 import MultipleChoiceQuestion from './multiplechoice'
 import Question from './question'
 import {
-  FillInAnswer,
-  MultipleChoiceAnswer,
   QuestionBodyType,
   QuestionFormat,
+  QuestionSubmission,
+  QuestionSubmissionBodyType,
   Seconds,
-} from './types'
-
-// Type for Questions received through requests
-export interface QuestionSubmission {
-  text?: string
-  timeLimit?: number
-  body?: QuestionSubmissionBodyType
-}
-
-export interface MultipleChoiceSubmission {
-  type?: QuestionFormat.MultipleChoiceFormat
-  choices?: MultipleChoiceSubmisisonAnswer[]
-  answer?: number
-}
-
-export type MultipleChoiceSubmisisonAnswer = Partial<MultipleChoiceAnswer>
-
-export interface FillInSubmission {
-  type?: QuestionFormat.FillInFormat
-  /**
-   * Array of answers submitted by client
-   */
-  answers?: FillInSubmissionAnswer[]
-}
-export type FillInSubmissionAnswer = Partial<FillInAnswer>
-
-/**
- * Type submitted directly from client
- */
-export type QuestionSubmissionBodyType =
-  | MultipleChoiceSubmission
-  | FillInSubmission
+} from 'api/question'
 
 /**
  * Parses a Question from client submitted data

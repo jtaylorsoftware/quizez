@@ -1,16 +1,17 @@
-import { Map } from 'immutable'
-import { Result, ResultType } from 'result'
+import { QuestionError } from 'api/error'
 import {
   FillIn,
   FillInAnswer,
+  FillInSubmission,
   QuestionBodyType,
   QuestionFormat,
+  ResponseType,
   Seconds,
-} from './types'
-import { ResponseType } from 'session/quiz/response'
-import { QuestionError } from './error'
+} from 'api/question'
+import { Map } from 'immutable'
+import { Result, ResultType } from 'result'
 import Question from './question'
-import { FillInSubmission, validateSubmission } from './submission'
+import { validateSubmission } from './submission'
 
 export default class FillInQuestion extends Question {
   private _answers = Map<string, FillInAnswer>()

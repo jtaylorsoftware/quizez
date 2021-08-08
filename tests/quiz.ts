@@ -1,14 +1,14 @@
-import { nanoid } from 'nanoid'
-import { unwrap } from 'result'
-import { QuestionFormat, Quiz } from 'session/quiz'
 import {
   FillIn,
-  fromSubmission,
   MultipleChoice,
-  Question,
+  QuestionFormat,
   QuestionSubmission,
   QuestionSubmissionBodyType,
-} from 'session/quiz/question'
+} from 'api/question'
+import { nanoid } from 'nanoid'
+import { unwrap } from 'result'
+import { Quiz } from 'session/quiz'
+import { fromSubmission, Question } from 'session/quiz/question'
 import FillInQuestion from 'session/quiz/question/fillin'
 import MultipleChoiceQuestion from 'session/quiz/question/multiplechoice'
 

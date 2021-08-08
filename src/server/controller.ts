@@ -1,13 +1,13 @@
+import { ResponseType } from 'api/question'
+import * as requests from 'api/request'
+import * as responses from 'api/response'
 import { Map } from 'immutable'
-import * as requests from 'requests'
-import * as responses from 'responses'
 import { Result } from 'result'
 import { Session } from 'session'
 import {
   Feedback,
   fromSubmission,
   responseToString,
-  ResponseType,
   validateResponse,
 } from 'session/quiz'
 import { User } from 'session/user'
@@ -286,7 +286,7 @@ export class SessionController {
         new responses.NextQuestion(
           session.id,
           session.quiz.currentQuestionIndex,
-          nextQuestion
+          nextQuestion.data
         )
       )
     }
@@ -695,14 +695,15 @@ export class SessionController {
    * @param target either an ID string or Socket to emit to
    * @param response the response to the client
    */
-  private emit<Response extends responses.EventResponse>(
+  private emit<Response extends responses.EventResponse & Object>(
     target: string | Socket,
     response: Response
   ) {
+    const event = (response.constructor as typeof responses.EventResponse).event
     if (target instanceof Socket) {
-      target.emit(response.event, response)
+      target.emit(event, response)
     } else {
-      this.io.to(target).emit(response.event, response)
+      this.io.to(target).emit(event, response)
     }
   }
 
@@ -717,6 +718,7 @@ export class SessionController {
     except: string,
     response: Response
   ) {
-    this.io.to(room).except(except).emit(response.event, response)
+    const event = (response.constructor as typeof responses.EventResponse).event
+    this.io.to(room).except(except).emit(event, response)
   }
 }

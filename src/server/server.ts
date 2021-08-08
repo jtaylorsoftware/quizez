@@ -1,5 +1,5 @@
+import SessionEvent from 'api/event'
 import { createServer, Server as HttpServer } from 'http'
-import SessionEvent from 'event'
 import { Server } from 'socket.io'
 import { SessionController } from './controller'
 

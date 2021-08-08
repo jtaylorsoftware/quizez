@@ -1,17 +1,13 @@
-import SessionEvent from 'event'
+import SessionEvent from 'api/event'
+import { Rating } from 'api/feedback'
+import { QuestionFormat, QuestionSubmission } from 'api/question'
+import * as requests from 'api/request'
+import * as responses from 'api/response'
 import { Server } from 'http'
 import { nanoid } from 'nanoid'
 import { AddressInfo } from 'net'
-import * as requests from 'requests'
-import * as responses from 'responses'
 import { createSocketServer } from 'server'
-import {
-  Feedback,
-  Question,
-  QuestionFormat,
-  QuestionSubmission,
-  Rating,
-} from 'session/quiz'
+import { Feedback, Question } from 'session/quiz'
 import { io, Socket } from 'socket.io-client'
 
 describe('Server', () => {

@@ -1,10 +1,6 @@
+import { FillInResponse, QuestionFormat } from 'api/question'
 import { unwrap } from 'result'
-import {
-  FillInResponse,
-  fromSubmission,
-  Question,
-  QuestionFormat,
-} from 'session/quiz'
+import { fromSubmission, Question } from 'session/quiz'
 import FillInQuestion from 'session/quiz/question/fillin'
 
 const _setTimeoutReal = global.setTimeout

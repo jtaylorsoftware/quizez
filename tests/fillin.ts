@@ -1,5 +1,6 @@
+import { QuestionFormat } from 'api/question'
 import { unwrap } from 'result'
-import { fromSubmission, QuestionFormat, Question } from 'session/quiz'
+import { fromSubmission, Question } from 'session/quiz'
 import FillInQuestion from 'session/quiz/question/fillin'
 
 describe('FillInQuestion', () => {
