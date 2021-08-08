@@ -346,7 +346,7 @@ describe('Server', () => {
           expect(res.index).toBe(0)
           expect(res.session).toBe(id)
           expect(res.firstCorrect).toBe(true)
-          expect(res.isCorrect).toBe(true)
+          expect(res.points).toBe(pointsPerQuestion)
           if (userReceived && ownerReceived) {
             done()
           }
@@ -360,7 +360,7 @@ describe('Server', () => {
           expect(res.session).toBe(id)
           expect(res.user).toBe(name)
           expect(res.response).toBe('1')
-          expect(res.isCorrect).toBe(true)
+          expect(res.points).toBe(pointsPerQuestion)
           expect(res.firstCorrect).toBe(name)
           expect(res.frequency).toBe(1)
           expect(res.relativeFrequency).toBe(1)
@@ -370,13 +370,14 @@ describe('Server', () => {
         }
       )
 
+      const pointsPerQuestion = 200
       const question: QuestionSubmission = {
         text: 'Question',
         body: {
           type: QuestionFormat.MultipleChoiceFormat,
           choices: [
-            { text: 'Choice One', points: 200 },
-            { text: 'Choice Two', points: 200 },
+            { text: 'Choice One', points: pointsPerQuestion },
+            { text: 'Choice Two', points: pointsPerQuestion },
           ],
           answer: 1,
         },

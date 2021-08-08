@@ -115,7 +115,7 @@ export default class FillInQuestion extends Question {
     super(text, timeLimit)
     this._answers = Map<string, FillInAnswer>()
     body.answers.forEach((answer) => {
-      this._answers = this._answers.set(answer.text, answer)
+      this._answers = this._answers.set(answer.text.toLowerCase(), answer)
     })
   }
 
@@ -128,12 +128,18 @@ export default class FillInQuestion extends Question {
     answers.forEach((answer, _) => {
       actualTotalPoints =
         actualTotalPoints + (answer.points ?? -1 * actualTotalPoints)
-      outQuestion._answers = outQuestion._answers.set(answer.text!, {
-        text: answer.text!,
-        points: answer.points!,
-      })
+      outQuestion._answers = outQuestion._answers.set(
+        answer.text!.toLowerCase(),
+        {
+          text: answer.text!,
+          points: answer.points!,
+        }
+      )
       // populate a mapping of answer text to answer
-      outQuestion._frequency = outQuestion._frequency.set(answer.text!, 0)
+      outQuestion._frequency = outQuestion._frequency.set(
+        answer.text!.toLowerCase(),
+        0
+      )
     })
     outQuestion._totalPoints = actualTotalPoints
   }
@@ -143,7 +149,7 @@ export default class FillInQuestion extends Question {
       return 0
     }
 
-    const answer = <string>response.answer
+    const answer = response.answer.toLowerCase()
     return this._frequency.get(answer) ?? 0
   }
 
@@ -164,12 +170,13 @@ export default class FillInQuestion extends Question {
     return copy
   }
 
-  protected gradeResponse(response: ResponseType): boolean {
+  protected gradeResponse(response: ResponseType): number {
     if (response.type !== QuestionFormat.FillInFormat) {
-      return false
+      return 0
     }
 
-    return this._answers.has(response.answer)
+    const answer = this._answers.get(response.answer.toLowerCase())
+    return answer != null ? answer.points : 0
   }
 
   protected updateFrequency(response: ResponseType) {

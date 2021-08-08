@@ -1,5 +1,11 @@
 import { unwrap } from 'result'
-import { fromSubmission, Question, QuestionFormat } from 'session/quiz'
+import {
+  FillInResponse,
+  fromSubmission,
+  Question,
+  QuestionFormat,
+} from 'session/quiz'
+import FillInQuestion from 'session/quiz/question/fillin'
 
 const _setTimeoutReal = global.setTimeout
 const _clearTimeoutReal = global.clearTimeout
@@ -118,5 +124,58 @@ describe('Question', () => {
     _invokeTimeoutNow()
 
     expect(onTimeout).toHaveBeenCalled()
+  })
+
+  describe('addResponse', () => {
+    it('should return the number of points earned for the given answer', () => {
+      const question = <FillInQuestion>unwrap(
+        fromSubmission({
+          text: 'Question',
+          body: {
+            type: QuestionFormat.FillInFormat,
+            answers: [
+              { text: 'One', points: 100 },
+              { text: 'Two', points: 0 },
+            ],
+          },
+          timeLimit: Question.minTimeLimit,
+        })
+      )
+
+      question.start()
+      let points = question.addResponse({
+        type: QuestionFormat.FillInFormat,
+        answer: 'One',
+        submitter: 'User',
+      })
+      expect(points).toBe(question.answers.get('one')!.points)
+    })
+
+    it('should be case insensitive', () => {
+      const question = <FillInQuestion>unwrap(
+        fromSubmission({
+          text: 'Question',
+          body: {
+            type: QuestionFormat.FillInFormat,
+            answers: [
+              { text: 'Answer One', points: 51 },
+              { text: 'Answer Two', points: 50 },
+            ],
+          },
+          timeLimit: Question.minTimeLimit,
+        })
+      )
+
+      question.start()
+      const response: FillInResponse = {
+        type: QuestionFormat.FillInFormat,
+        answer: 'AnSwEr OnE',
+        submitter: 'User',
+      }
+      let points = question.addResponse(response)
+      expect(points).toBe(
+        question.answers.get(response.answer.toLowerCase())!.points
+      )
+    })
   })
 })

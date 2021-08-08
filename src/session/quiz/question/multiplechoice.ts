@@ -178,13 +178,14 @@ export default class MultipleChoiceQuestion
     return copy
   }
 
-  protected gradeResponse(response: ResponseType): boolean {
+  protected gradeResponse(response: ResponseType): number {
     if (response.type !== QuestionFormat.MultipleChoiceFormat) {
-      return false
+      return 0
     }
 
-    const mcQuestion = this.body as MultipleChoice
-    return response.answer === mcQuestion.answer
+    return response.answer === this.answer
+      ? this.choices[this.answer]!.points
+      : 0
   }
 
   protected updateFrequency(response: ResponseType) {

@@ -201,9 +201,9 @@ export class QuestionResponseSuccess implements EventResponse {
     readonly firstCorrect: boolean,
 
     /**
-     * True if user Response is correct
+     * The number of points earned for the answer (a score of 0 means incorrect)
      */
-    readonly isCorrect: boolean
+    readonly points: number
   ) {}
 }
 
@@ -231,9 +231,9 @@ export class QuestionResponseAdded implements EventResponse {
     readonly response: string,
 
     /**
-     * True if the user's Response is correct
+     * The number of points earned for the answer (a score of 0 means incorrect)
      */
-    readonly isCorrect: boolean,
+    readonly points: number,
 
     /**
      * Name of the first correct responder

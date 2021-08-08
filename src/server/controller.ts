@@ -347,10 +347,10 @@ export class SessionController {
       const response = <ResponseType>args.response
 
       const question = session.quiz.questionAt(args.index)!
-      let isCorrect: boolean
+      let points: number = 0
 
       try {
-        isCorrect = question.addResponse(response)
+        points = question.addResponse(response)
       } catch (error) {
         debug(`failed to add response to ${session.id} question ${args.index}`)
         this.emit(socket, new responses.QuestionResponseFailed(session.id))
@@ -371,7 +371,7 @@ export class SessionController {
           args.index,
           user.name,
           responseToString(response),
-          isCorrect,
+          points,
           firstCorrect,
           question.frequencyOf(response),
           question.relativeFrequencyOf(response)
@@ -385,7 +385,7 @@ export class SessionController {
           session.id,
           args.index,
           firstCorrect === user.name,
-          isCorrect
+          points
         )
       )
     }

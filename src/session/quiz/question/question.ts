@@ -167,10 +167,10 @@ export abstract class Question implements QuestionData {
   /**
    * Adds a Response if its type is the same as the Question
    * @param response Response to add
-   * @returns the grade of the Response (correct or incorrect)
+   * @returns the grade of the Response (point value earned)
    * @throws Error thrown if user already responded or if the question has ended or has not started
    */
-  addResponse(response: ResponseType): boolean {
+  addResponse(response: ResponseType): number {
     if (!this._isStarted) {
       throw new Error('Question has not started')
     }
@@ -181,12 +181,12 @@ export abstract class Question implements QuestionData {
       throw new Error('Already responded')
     }
     this._responses = this._responses.set(response.submitter, response)
-    const isCorrect = this.gradeResponse(response)
-    if (isCorrect && this._firstCorrect == null) {
+    const points = this.gradeResponse(response)
+    if (points > 0 && this._firstCorrect == null) {
       this._firstCorrect = response.submitter
     }
     this.updateFrequency(response)
-    return isCorrect
+    return points
   }
 
   /**
@@ -226,7 +226,7 @@ export abstract class Question implements QuestionData {
 
   protected abstract updateFrequency(response: ResponseType): void
 
-  protected abstract gradeResponse(response: ResponseType): boolean
+  protected abstract gradeResponse(response: ResponseType): number
 
   protected static validateQuestionText(text: string): QuestionError[] {
     if (text.length === 0) {
