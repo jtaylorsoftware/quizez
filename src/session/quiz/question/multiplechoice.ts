@@ -148,6 +148,15 @@ export default class MultipleChoiceQuestion
     this._totalPoints = totalPoints
   }
 
+  frequencyOf(response: ResponseType): number {
+    if (response.type !== QuestionFormat.MultipleChoiceFormat) {
+      return 0
+    }
+
+    const answer = response.answer.toString()
+    return this._frequency.get(answer)!
+  }
+
   /**
    * Creates a copy of the Question
    * @returns the copy of the Question
@@ -176,5 +185,15 @@ export default class MultipleChoiceQuestion
 
     const mcQuestion = this.body as MultipleChoice
     return response.answer === mcQuestion.answer
+  }
+
+  protected updateFrequency(response: ResponseType) {
+    if (response.type !== QuestionFormat.MultipleChoiceFormat) {
+      return
+    }
+
+    const answer = response.answer.toString()
+    const prev = this._frequency.get(answer)!
+    this._frequency = this._frequency.set(answer, prev + 1)
   }
 }

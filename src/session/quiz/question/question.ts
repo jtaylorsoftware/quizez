@@ -2,11 +2,7 @@ import { List, Map } from 'immutable'
 import { Feedback } from 'session/quiz/feedback'
 import { ResponseType } from 'session/quiz/response'
 import { QuestionError } from './error'
-import QuestionFormat, {
-  QuestionBodyType,
-  QuestionData,
-  Seconds,
-} from './types'
+import { QuestionBodyType, QuestionData, Seconds } from './types'
 
 /**
  * A varying-type Question, that could be multiple choice or fill-in
@@ -221,44 +217,14 @@ export abstract class Question implements QuestionData {
    * @param response The Response to lookup
    * @returns The frequency of the Response
    */
-  frequencyOf(response: ResponseType): number {
-    switch (response.type) {
-      case QuestionFormat.MultipleChoiceFormat: {
-        const answer = response.answer.toString()
-        return this._frequency.get(answer)!
-      }
-      case QuestionFormat.FillInFormat: {
-        const answer = <string>response.answer
-        return this._frequency.get(answer) ?? 0
-      }
-      default:
-        return 0
-    }
-  }
+  abstract frequencyOf(response: ResponseType): number
 
   /**
    * @returns A copy of this Question
    */
   abstract clone(): Question
 
-  private updateFrequency(response: ResponseType) {
-    switch (response.type) {
-      case QuestionFormat.MultipleChoiceFormat:
-        {
-          const answer = response.answer.toString()
-          const prev = this._frequency.get(answer)!
-          this._frequency = this._frequency.set(answer, prev + 1)
-        }
-        break
-      case QuestionFormat.FillInFormat:
-        {
-          const answer = <string>response.answer
-          const prev = this._frequency.get(answer) ?? 0
-          this._frequency = this._frequency.set(answer, prev + 1)
-        }
-        break
-    }
-  }
+  protected abstract updateFrequency(response: ResponseType): void
 
   protected abstract gradeResponse(response: ResponseType): boolean
 

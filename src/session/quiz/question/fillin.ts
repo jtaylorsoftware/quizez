@@ -138,6 +138,15 @@ export default class FillInQuestion extends Question {
     outQuestion._totalPoints = actualTotalPoints
   }
 
+  frequencyOf(response: ResponseType): number {
+    if (response.type !== QuestionFormat.FillInFormat) {
+      return 0
+    }
+
+    const answer = <string>response.answer
+    return this._frequency.get(answer) ?? 0
+  }
+
   clone(): Question {
     const copy = new FillInQuestion(
       this._text,
@@ -161,5 +170,15 @@ export default class FillInQuestion extends Question {
     }
 
     return this._answers.has(response.answer)
+  }
+
+  protected updateFrequency(response: ResponseType) {
+    if (response.type !== QuestionFormat.FillInFormat) {
+      return
+    }
+
+    const answer = <string>response.answer
+    const prev = this._frequency.get(answer) ?? 0
+    this._frequency = this._frequency.set(answer, prev + 1)
   }
 }
