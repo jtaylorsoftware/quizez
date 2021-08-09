@@ -24,14 +24,9 @@ export enum SessionEvent {
   JoinSession = 'join session',
 
   /**
-   * The server successfully added the client to the session
+   * A user joined the session
    */
-  JoinSessionSuccess = 'join success',
-
-  /**
-   * The server could not add the client to the session
-   */
-  JoinSessionFailed = 'join failed',
+  UserJoinedSession = 'user joined',
 
   /**
    * A user is being removed from a Session by the owner
@@ -39,14 +34,9 @@ export enum SessionEvent {
   SessionKick = 'kick',
 
   /**
-   * The server could not remove the user
+   * A user is being removed & all users are being notified
    */
-  SessionKickSuccess = 'kick success',
-
-  /**
-   * The server could not remove the user
-   */
-  SessionKickFailed = 'kick failed',
+  UserKicked = 'user kicked',
 
   /**
    * Owner is starting session
@@ -54,14 +44,9 @@ export enum SessionEvent {
   StartSession = 'start session',
 
   /**
-   * A Session has started
+   * A Session has started & server is notifying users
    */
   SessionStarted = 'session started',
-
-  /**
-   * A Session failed to start
-   */
-  SessionStartFailed = 'session start failed',
 
   /**
    * Owner is ending session
@@ -69,14 +54,9 @@ export enum SessionEvent {
   EndSession = 'end session',
 
   /**
-   * Session has ended
+   * Session has ended & server is notfying all users
    */
   SessionEnded = 'session ended',
-
-  /**
-   * A Session failed to end
-   */
-  SessionEndFailed = 'session end failed',
 
   /**
    * A user disconnected from the Session
@@ -90,9 +70,6 @@ export enum SessionEvent {
    */
   EndQuestion = 'end question',
 
-  EndQuestionFailed = 'end question failed',
-  EndQuestionSuccess = 'ended question',
-
   /**
    * The Session owner has ended a Question. Clients that
    * joined a Session can handle this in any desired way,
@@ -103,15 +80,9 @@ export enum SessionEvent {
   QuestionEnded = 'question ended',
 
   /**
-   * A Session owner is pushing the next question to users
+   * Server is notifying users that next question has been pushed
    */
   NextQuestion = 'next question',
-
-  /**
-   * Failed to push the next question. Might be because there
-   * are no more questions, or there is no such session.
-   */
-  NextQuestionFailed = 'next question failed',
 
   /**
    * A Session owner is adding a question
@@ -119,29 +90,9 @@ export enum SessionEvent {
   AddQuestion = 'add question',
 
   /**
-   * The question sent could not be added to the Quiz
-   */
-  AddQuestionFailed = 'add question failed',
-
-  /**
-   * The question was successfully added to the Quiz
-   */
-  AddQuestionSuccess = 'add question success',
-
-  /**
    * User is responding to a question
    */
   QuestionResponse = 'question response',
-
-  /**
-   * User failed to add Response
-   */
-  QuestionResponseFailed = 'question response failed',
-
-  /**
-   * User successfully added Response
-   */
-  QuestionResponseSuccess = 'question response success',
 
   /**
    * Server notifying the Session owner that user submitted a Response
@@ -155,16 +106,6 @@ export enum SessionEvent {
   SubmitFeedback = 'submit feedback',
 
   /**
-   * Failure case. See `SubmitFeedback`
-   */
-  SubmitFeedbackFailed = 'submit feedback failed',
-
-  /**
-   * Success case. See `Submit Feedback`
-   */
-  SubmitFeedbackSuccess = 'submit feedback success',
-
-  /**
    * Session owner receiving Question feedback
    */
   FeedbackSubmitted = 'feedback submitted',
@@ -173,16 +114,6 @@ export enum SessionEvent {
    * Session owner sending a hint for a question
    */
   SendHint = 'send hint',
-
-  /**
-   * Failure case. See `SendHint`
-   */
-  SendHintFailed = 'send hint failed',
-
-  /**
-   * Success case. See `SendHint`
-   */
-  SendHintSuccess = 'send hint success',
 
   /**
    * Users in the session receiving hint

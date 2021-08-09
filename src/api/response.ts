@@ -12,390 +12,285 @@ import { QuestionData } from './question'
  */
 
 /**
- * A response to an event that was received from a client socket
+ * Acknowledgement callback for client emits
  */
-export abstract class EventResponse {
-  static event: SessionEvent = SessionEvent.Unused
+export type EventCallback = (response: EventResponse) => void
+
+export enum ResponseStatus {
+  Failure = 400,
+  Success = 200,
+}
+
+/**
+ * Acknowledgement callback argument type
+ */
+export type EventResponse = FailureResponse | SuccessResponse
+
+/**
+ * The emit failed with errors.
+ */
+export interface FailureResponse {
+  status: ResponseStatus.Failure
+  event: SessionEvent
+  session: string | null
+  errors: ApiError[] | null
+}
+
+/**
+ * The emit succeeded potentially with return data.
+ */
+export type SuccessResponse =
+  | CreateSessionSuccess
+  | JoinSessionSuccess
+  | UserJoinedSession
+  | SessionKickSuccess
+  | UserKicked
+  | SessionStartSuccess
+  | SessionStarted
+  | SessionEndSuccess
+  | SessionEnded
+  | UserDisconnected
+  | NextQuestionSuccess
+  | NextQuestion
+  | AddQuestionSuccess
+  | QuestionResponseSuccess
+  | QuestionResponseAdded
+  | EndQuestionSuccess
+  | QuestionEnded
+  | SubmitFeedbackSuccess
+  | FeedbackSubmitted
+  | SendHintSuccess
+  | HintReceived
+
+export interface CreateSessionSuccess {
+  status: ResponseStatus.Success
   session: string
+  event: SessionEvent.CreatedSession
+  data: string
+}
 
-  constructor(session: string) {
-    this.session = session
+export interface JoinSessionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.JoinSession
+  data: null
+}
+
+export interface UserJoinedSession {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.UserJoinedSession
+  data: {
+    name: string
   }
 }
 
-export class CreateSessionSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.CreatedSession
-
-  constructor(session: string) {
-    super(session)
+export interface SessionKickSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.SessionKick
+  data: {
+    name: string
   }
 }
 
-export class JoinSessionFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.JoinSessionFailed
+export interface UserKicked {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.UserKicked
+  data: {
+    name: string
+  }
+}
 
-  constructor(
-    session: string = '',
+export interface SessionStartSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.StartSession
+  data: null
+}
+
+export interface SessionStarted {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.SessionStarted
+  data: null
+}
+
+export interface SessionEndSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.EndSession
+  data: null
+}
+
+export interface SessionEnded {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.SessionEnded
+  data: null
+}
+
+export interface UserDisconnected {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.UserDisconnected
+  data: {
+    name: string
+  }
+}
+
+export interface NextQuestionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.NextQuestion
+  data: null
+}
+
+export interface NextQuestion {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.NextQuestion
+  data: {
+    index: number
+    question: QuestionData
+  }
+}
+
+export interface AddQuestionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.AddQuestion
+  data: null
+}
+
+export interface QuestionResponseSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.QuestionResponse
+  data: {
     /**
-     * The name used to join
+     * Question index responded to
      */
-    readonly name: string | null = null
-  ) {
-    super(session)
-  }
-}
-
-export class JoinSessionSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.JoinSessionSuccess
-
-  constructor(
-    session: string,
-
+    index: number
     /**
-     * The name of the user joining
+     * True if this user was first to answer correctly
      */
-    readonly name: string
-  ) {
-    super(session)
-  }
-}
-
-export class SessionKickSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionKickSuccess
-
-  constructor(
-    session: string,
-
+    firstCorrect: boolean
     /**
-     * The user kicked
+     * Points earned for response
      */
-    readonly name: string
-  ) {
-    super(session)
+    points: number
   }
 }
 
-export class SessionKickFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionKickFailed
-
-  constructor(
-    session: string = '',
-
-    /**
-     * The name used to attempt kick
-     */
-    readonly name: string | null = null
-  ) {
-    super(session)
-  }
-}
-
-export class SessionStartedSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionStarted
-
-  constructor(session: string) {
-    super(session)
-  }
-}
-
-export class SessionStartFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionStartFailed
-
-  constructor(session: string = '') {
-    super(session)
-  }
-}
-
-export class SessionEndedSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionEnded
-
-  constructor(session: string) {
-    super(session)
-  }
-}
-
-export class SessionEndFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SessionEndFailed
-
-  constructor(session: string = '') {
-    super(session)
-  }
-}
-
-export class UserDisconnected extends EventResponse {
-  static override event: SessionEvent = SessionEvent.UserDisconnected
-
-  constructor(
-    session: string,
-
-    /**
-     * The name of user disconnecting
-     */
-    readonly name: string
-  ) {
-    super(session)
-  }
-}
-
-export class NextQuestionFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.NextQuestionFailed
-
-  constructor(
-    session: string = '',
-    /**
-     * The number of questions in the quiz, if applicable
-     */
-    readonly numQuestions: number = -1,
-    /**
-     * The current question index of the quiz, if applicable
-     */
-    readonly currentIndex: number = -1
-  ) {
-    super(session)
-  }
-}
-
-export class NextQuestion extends EventResponse {
-  static override event: SessionEvent = SessionEvent.NextQuestion
-
-  constructor(
-    session: string,
-
-    /**
-     * The index of the next Question
-     */
-    readonly index: number,
-
-    readonly question: QuestionData
-  ) {
-    super(session)
-  }
-}
-
-// TODO - ? Give useful info for retries
-export class AddQuestionFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.AddQuestionFailed
-
-  constructor(
-    session: string = '',
-
-    /**
-     * The errors from submitting and parsing the Question
-     */
-    readonly errors: ApiError[] | null = null
-  ) {
-    super(session)
-  }
-}
-
-export class AddQuestionSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.AddQuestionSuccess
-
-  constructor(session: string) {
-    super(session)
-  }
-}
-
-export class QuestionResponseFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.QuestionResponseFailed
-
-  constructor(
-    session: string = '',
-
-    /**
-     * The errors from submitting and parsing the Response
-     */
-    readonly errors: ApiError[] | null = null
-  ) {
-    super(session)
-  }
-}
-
-export class QuestionResponseSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.QuestionResponseSuccess
-
-  constructor(
-    session: string,
-
-    /**
-     * The index of the question this applies to
-     */
-    readonly index: number,
-
-    /**
-     * True if user is the first correct responder
-     */
-    readonly firstCorrect: boolean,
-
-    /**
-     * The number of points earned for the answer (a score of 0 means incorrect)
-     */
-    readonly points: number
-  ) {
-    super(session)
-  }
-}
-
-export class QuestionResponseAdded extends EventResponse {
-  static override event: SessionEvent = SessionEvent.QuestionResponseAdded
-
-  constructor(
-    session: string,
-
+export interface QuestionResponseAdded {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.QuestionResponseAdded
+  data: {
     /**
      * The Question index
      */
-    readonly index: number,
+    index: number
 
     /**
      * The user submitting Response
      */
-    readonly user: string,
+    user: string
 
     /**
      * The user's response value
      */
-    readonly response: string,
+    response: string
 
     /**
      * The number of points earned for the answer (a score of 0 means incorrect)
      */
-    readonly points: number,
+    points: number
 
     /**
      * Name of the first correct responder
      */
-    readonly firstCorrect: string,
+    firstCorrect: string
 
     /**
      * The frequency of the user's response
      */
-    readonly frequency: number,
+    frequency: number
 
     /**
      * The relative frequency of the user's response
      */
-    readonly relativeFrequency: number
-  ) {
-    super(session)
+    relativeFrequency: number
   }
 }
 
-export class EndQuestionFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.EndQuestionFailed
+export interface EndQuestionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.EndQuestion
+  data: null
+}
 
-  constructor(
-    session: string = '',
-    /**
-     * Index of the Question that could not end
-     */
-    readonly question: number | null = null
-  ) {
-    super(session)
+export interface QuestionEnded {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.QuestionEnded
+  data: {
+    question: number
   }
 }
 
-export class QuestionEndedSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.QuestionEnded
-
-  constructor(
-    session: string,
-
-    /**
-     * The question index
-     */
-    readonly question: number
-  ) {
-    super(session)
-  }
+export interface SubmitFeedbackSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.SubmitFeedback
+  data: null
 }
 
-export class SubmitFeedbackSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SubmitFeedbackSuccess
-
-  constructor(session: string) {
-    super(session)
-  }
-}
-
-export class SubmitFeedbackFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SubmitFeedbackFailed
-
-  constructor(
-    session: string = '',
-
-    /**
-     * The errors from submitting and parsing the Feedback
-     */
-    readonly errors: ApiError[] | null = null
-  ) {
-    super(session)
-  }
-}
-
-export class FeedbackSubmitted extends EventResponse {
-  static override event: SessionEvent = SessionEvent.FeedbackSubmitted
-
-  constructor(
-    session: string,
-
+export interface FeedbackSubmitted {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.FeedbackSubmitted
+  data: {
     /**
      * The name of user submitting feedback
      */
-    readonly user: string,
+    user: string
 
     /**
      * The index of the question the feedback is for
      */
-    readonly question: number,
+    question: number
 
     /**
      * The user's feedback
      */
-    readonly feedback: Feedback
-  ) {
-    super(session)
+    feedback: Feedback
   }
 }
 
-export class SendHintFailed extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SendHintFailed
-
-  constructor(
-    session: string = '',
-    /**
-     * The errors from submitting and parsing the Hint
-     */
-    readonly errors: ApiError[] | null = null
-  ) {
-    super(session)
-  }
+export interface SendHintSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.SendHint
+  data: null
 }
 
-export class SendHintSuccess extends EventResponse {
-  static override event: SessionEvent = SessionEvent.SendHintSuccess
-
-  constructor(session: string) {
-    super(session)
-  }
-}
-
-export class HintReceived extends EventResponse {
-  static override event: SessionEvent = SessionEvent.HintReceived
-
-  constructor(
-    session: string,
-
+export interface HintReceived {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.HintReceived
+  data: {
     /**
      * The index of question the hint is for
      */
-    readonly question: number,
+    question: number
 
     /**
      * The hint message
      */
-    readonly hint: string
-  ) {
-    super(session)
+    hint: string
   }
 }

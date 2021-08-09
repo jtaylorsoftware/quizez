@@ -1,12 +1,4 @@
-import { Feedback } from 'session/quiz'
-import { FillIn, MultipleChoice, QuestionData, ResponseType } from './question'
-
-export type ApiErrorField =
-  | keyof QuestionData
-  | keyof MultipleChoice
-  | keyof FillIn
-  | keyof Feedback
-  | keyof ResponseType
+export type ApiErrorField = string
 
 export type ApiErrorValue = string | number
 

@@ -1,7 +1,8 @@
 jest.mock('socket.io')
 jest.mock('socket.io/dist/client')
+import SessionEvent from 'api/event'
 import { QuestionFormat } from 'api/question'
-import { QuestionEndedSuccess } from 'api/response'
+import { ResponseStatus } from 'api/response'
 import { SessionController } from 'server/controller'
 import { Session } from 'session'
 import { Namespace, Server, Socket } from 'socket.io'
@@ -51,20 +52,23 @@ describe('SessionController', () => {
     it('should add a Question with a timeout to emit QuestionEnded', () => {
       // Add question
       const handler = controller.addQuestionToSession(socket)
-      handler({
-        session: 'session',
-        question: {
-          text: 'Question',
-          body: {
-            type: QuestionFormat.FillInFormat,
-            answers: [
-              { text: 'One', points: 200 },
-              { text: 'Two', points: 200 },
-            ],
+      handler(
+        {
+          session: 'session',
+          question: {
+            text: 'Question',
+            body: {
+              type: QuestionFormat.FillInFormat,
+              answers: [
+                { text: 'One', points: 200 },
+                { text: 'Two', points: 200 },
+              ],
+            },
+            timeLimit: 60,
           },
-          timeLimit: 60,
         },
-      })
+        () => {}
+      )
 
       // Get question and check it has an onTimeout
       const question = session.quiz.questionAt(0)!
@@ -76,11 +80,14 @@ describe('SessionController', () => {
 
       // Calling onTimeout should have caused emit to happen
       // @ts-ignore
-      expect(controller.emit).toHaveBeenNthCalledWith(
-        2,
-        session.id,
-        new QuestionEndedSuccess(session.id, 0)
-      )
+      expect(controller.emit).toHaveBeenNthCalledWith(1, session.id, {
+        status: ResponseStatus.Success,
+        event: SessionEvent.QuestionEnded,
+        session: session.id,
+        data: {
+          question: 0,
+        },
+      })
     })
   })
 })

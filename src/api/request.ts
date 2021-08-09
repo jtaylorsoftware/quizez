@@ -38,7 +38,7 @@ export interface SessionKick {
   name: string
 }
 
-export interface SessionStart {
+export interface StartSession {
   /**
    * The session to start
    */
