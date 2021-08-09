@@ -1,3 +1,4 @@
+import { ApiError } from './error'
 import SessionEvent from './event'
 import { Feedback } from './feedback'
 import { QuestionData } from './question'
@@ -33,7 +34,13 @@ export class CreateSessionSuccess extends EventResponse {
 export class JoinSessionFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.JoinSessionFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+    /**
+     * The name used to join
+     */
+    readonly name: string | null = null
+  ) {
     super(session)
   }
 }
@@ -71,7 +78,14 @@ export class SessionKickSuccess extends EventResponse {
 export class SessionKickFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.SessionKickFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+
+    /**
+     * The name used to attempt kick
+     */
+    readonly name: string | null = null
+  ) {
     super(session)
   }
 }
@@ -162,7 +176,14 @@ export class NextQuestion extends EventResponse {
 export class AddQuestionFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.AddQuestionFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+
+    /**
+     * The errors from submitting and parsing the Question
+     */
+    readonly errors: ApiError[] | null = null
+  ) {
     super(session)
   }
 }
@@ -178,7 +199,14 @@ export class AddQuestionSuccess extends EventResponse {
 export class QuestionResponseFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.QuestionResponseFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+
+    /**
+     * The errors from submitting and parsing the Response
+     */
+    readonly errors: ApiError[] | null = null
+  ) {
     super(session)
   }
 }
@@ -256,7 +284,13 @@ export class QuestionResponseAdded extends EventResponse {
 export class EndQuestionFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.EndQuestionFailed
 
-  constructor(session: string = '', readonly question?: number) {
+  constructor(
+    session: string = '',
+    /**
+     * Index of the Question that could not end
+     */
+    readonly question: number | null = null
+  ) {
     super(session)
   }
 }
@@ -287,7 +321,14 @@ export class SubmitFeedbackSuccess extends EventResponse {
 export class SubmitFeedbackFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.SubmitFeedbackFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+
+    /**
+     * The errors from submitting and parsing the Feedback
+     */
+    readonly errors: ApiError[] | null = null
+  ) {
     super(session)
   }
 }
@@ -320,7 +361,13 @@ export class FeedbackSubmitted extends EventResponse {
 export class SendHintFailed extends EventResponse {
   static override event: SessionEvent = SessionEvent.SendHintFailed
 
-  constructor(session: string = '') {
+  constructor(
+    session: string = '',
+    /**
+     * The errors from submitting and parsing the Hint
+     */
+    readonly errors: ApiError[] | null = null
+  ) {
     super(session)
   }
 }

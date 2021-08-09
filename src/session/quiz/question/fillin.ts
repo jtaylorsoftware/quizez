@@ -74,7 +74,7 @@ export default class FillInQuestion extends Question {
     ) {
       errors.push({
         field: 'answers',
-        value: answers == null ? null : answers,
+        value: answers == null ? null : answers.length,
       })
     } else {
       let totalPoints: number | null = 0

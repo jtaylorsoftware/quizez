@@ -85,6 +85,6 @@ export function fromSubmission(
 
   return {
     type: Result.Failure,
-    errors: [{ field: 'body', value: body == null ? null : body }],
+    errors: [{ field: 'body', value: null }],
   }
 }

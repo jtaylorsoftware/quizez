@@ -83,7 +83,7 @@ export default class MultipleChoiceQuestion
     ) {
       errors.push({
         field: 'choices',
-        value: body.choices == null ? null : body.choices,
+        value: body.choices == null ? null : body.choices.length,
       })
     } else {
       let totalPoints: number | null = 0

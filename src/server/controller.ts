@@ -102,7 +102,10 @@ export class SessionController {
             new responses.JoinSessionSuccess(session.id, args.name)
           )
         } else {
-          this.emit(socket, new responses.JoinSessionFailed(session.id))
+          this.emit(
+            socket,
+            new responses.JoinSessionFailed(session.id, args.name)
+          )
         }
       }
     }
@@ -142,7 +145,10 @@ export class SessionController {
         const result = fromSubmission(args.question)
         if (result.type === Result.Failure) {
           debug('question has invalid format')
-          this.emit(socket, new responses.AddQuestionFailed(session.id))
+          this.emit(
+            socket,
+            new responses.AddQuestionFailed(session.id, result.errors)
+          )
         } else {
           debug('question added')
           const { data: question } = result
@@ -188,7 +194,10 @@ export class SessionController {
         const user = session.removeUser(args.name)
         if (user == null) {
           debug(`could not remove user ${args.name}`)
-          this.emit(socket, new responses.SessionKickFailed(session.id))
+          this.emit(
+            socket,
+            new responses.SessionKickFailed(session.id, args.name)
+          )
           return
         }
 
@@ -464,7 +473,10 @@ export class SessionController {
         debug(
           `session ${args.session} quiz is not on the argument question index ${args.question}`
         )
-        this.emit(socket, new responses.EndQuestionFailed(session.id))
+        this.emit(
+          socket,
+          new responses.EndQuestionFailed(session.id, args.question)
+        )
         return
       }
 
@@ -536,9 +548,13 @@ export class SessionController {
       }
 
       // Ensure feedback passes constraints
-      if (Feedback.validate(args.feedback).length !== 0) {
+      const errors = Feedback.validate(args.feedback)
+      if (errors.length !== 0) {
         debug(`could not validate feedback: ${args.feedback}`)
-        this.emit(socket, new responses.SubmitFeedbackFailed(args.session))
+        this.emit(
+          socket,
+          new responses.SubmitFeedbackFailed(args.session, errors)
+        )
         return
       }
       const feedback = new Feedback(
