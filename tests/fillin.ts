@@ -90,4 +90,25 @@ describe('FillInQuestion', () => {
     )
     expect(question).toBeUndefined()
   })
+
+  describe('body', () => {
+    it('should have type FillIn', () => {
+      let submission = {
+        type: QuestionFormat.FillInFormat,
+        answers: [
+          { text: 'One', points: 50 },
+          { text: 'Two', points: 50 },
+        ],
+      }
+      let question = unwrap(
+        fromSubmission({
+          text: 'Question',
+          body: submission,
+          timeLimit: Question.minTimeLimit,
+        })
+      ) as FillInQuestion
+
+      expect(question.data.body.type).toBe(QuestionFormat.FillInFormat)
+    })
+  })
 })

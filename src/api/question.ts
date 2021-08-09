@@ -75,6 +75,7 @@ export interface FillInQuestion extends QuestionData {
  * Body of a multiple choice question
  */
 export interface MultipleChoice {
+  type: QuestionFormat.MultipleChoiceFormat
   choices: MultipleChoiceAnswer[]
   answer: number
 }
@@ -91,6 +92,8 @@ export interface MultipleChoiceAnswer {
  * Body for a fill-in-the-blank question
  */
 export interface FillIn {
+  type: QuestionFormat.FillInFormat
+
   /**
    * Answer map keyed on answer text
    */

@@ -12,10 +12,7 @@ import { Result, ResultType } from 'result'
 import Question from './question'
 import { validateSubmission } from './submission'
 
-export default class MultipleChoiceQuestion
-  extends Question
-  implements MultipleChoice
-{
+export default class MultipleChoiceQuestion extends Question {
   private _answer: number = -1
   private _choices: MultipleChoiceAnswer[] = []
 
@@ -32,6 +29,7 @@ export default class MultipleChoiceQuestion
    */
   get body(): QuestionBodyType {
     return {
+      type: QuestionFormat.MultipleChoiceFormat,
       answer: this.answer,
       choices: this.choices,
     }

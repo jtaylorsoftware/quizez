@@ -22,6 +22,7 @@ export default class FillInQuestion extends Question {
 
   get body(): QuestionBodyType {
     return {
+      type: QuestionFormat.FillInFormat,
       answers: Array.from(this.answers.values()),
     }
   }
@@ -49,7 +50,11 @@ export default class FillInQuestion extends Question {
     errors = errors.concat(super.validateQuestionTimeLimit(timeLimit!))
 
     if (errors.length === 0) {
-      const question = new FillInQuestion(text!, { answers: [] }, timeLimit!)
+      const question = new FillInQuestion(
+        text!,
+        { type: QuestionFormat.FillInFormat, answers: [] },
+        timeLimit!
+      )
       this.parseBody(body!, question)
 
       return {

@@ -95,4 +95,26 @@ describe('MultipleChoiceQuestion', () => {
     )
     expect(question).toBeUndefined()
   })
+
+  describe('body', () => {
+    it('should have type FillIn', () => {
+      let submission = {
+        type: QuestionFormat.MultipleChoiceFormat,
+        choices: [
+          { text: 'One', points: 50 },
+          { text: 'Two', points: 50 },
+        ],
+        answer: 0,
+      }
+      let question = unwrap(
+        fromSubmission({
+          text: 'Question',
+          body: submission,
+          timeLimit: Question.minTimeLimit,
+        })
+      ) as MultipleChoiceQuestion
+
+      expect(question.data.body.type).toBe(QuestionFormat.MultipleChoiceFormat)
+    })
+  })
 })
