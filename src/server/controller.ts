@@ -32,7 +32,7 @@ const debug = require('debug')('app:controller')
 
 // Handler for session related requests
 type SessionEventHandler<T> = (
-  args: SessionEventArgs<T> | EventCallback | undefined,
+  args?: SessionEventArgs<T> | EventCallback | undefined,
   callback?: EventCallback | undefined
 ) => void
 type SessionEventArgs<T> = Partial<T>
@@ -83,11 +83,10 @@ export class SessionController {
   createSession(socket: Socket): SessionEventHandler<CreateNewSession> {
     return (args, callback) => {
       if (args instanceof Function) {
-        // typically not called with arguments, so arguments should be
-        // just the callback
+        // not called with event arguments, so any arguments received should be the callback
         callback = args
       }
-      if (callback == null) {
+      if (callback == null || !(callback instanceof Function)) {
         debug('callback was null')
         return
       }
@@ -125,6 +124,7 @@ export class SessionController {
         })
         return
       }
+
       if (callback == null || !(callback instanceof Function)) {
         debug('callback was null or not a function')
         return
@@ -134,13 +134,25 @@ export class SessionController {
         `client ${socket.id} joining session ${args.id} with name ${args.name}`
       )
       const session = this.sessions.get(args.id ?? '')
-      if (session == null || args.name == null) {
+      if (session == null) {
+        debug(`could not find session ${args.id ?? ''} for user to join`)
         callback({
           status: ResponseStatus.Failure,
           event: SessionEvent.JoinSession,
-          session: session == null ? null : session.id,
+          session: args.id == null ? null : args.id,
           errors: [
-            { field: 'session', value: session == null ? null : session.id },
+            { field: 'session', value: args.id == null ? null : args.id },
+          ],
+        })
+        return
+      } else if (args.name == null) {
+        debug(`user joining name was null`)
+        callback({
+          status: ResponseStatus.Failure,
+          event: SessionEvent.JoinSession,
+          session: session.id,
+          errors: [
+            { field: 'name', value: args.name == null ? null : args.name },
           ],
         })
         return
@@ -169,6 +181,7 @@ export class SessionController {
             },
           })
         } else {
+          debug(`user ${args.name} could not join session ${session.id}`)
           callback({
             status: ResponseStatus.Failure,
             event: SessionEvent.JoinSession,
