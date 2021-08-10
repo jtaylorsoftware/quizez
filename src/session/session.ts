@@ -72,7 +72,8 @@ export class Session {
       user.id === this.owner ||
       this.isStarted ||
       this.hasEnded ||
-      this.users.has(user.name)
+      this.users.has(user.name) ||
+      this.usersById.has(user.id)
     ) {
       return false
     }
