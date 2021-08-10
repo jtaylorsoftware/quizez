@@ -17,19 +17,30 @@ jest.mock('session/quiz/question/fillin')
 jest.mock('session/quiz/question/multiplechoice')
 jest.mock('session/quiz/question/submission', () => {
   return {
+    // Fake impl that skips validation but returns a Question from a QuestionSubmission
     fromSubmission: jest.fn((submission: QuestionSubmission) => {
       const { text, body, timeLimit } = submission
       switch (submission.body!.type) {
-        case QuestionFormat.MultipleChoiceFormat:
+        case QuestionFormat.MultipleChoiceFormat: {
+          // This will be a class mock with no useful impl or base class getters
+          const question = new MultipleChoiceQuestion(
+            text!,
+            body as MultipleChoice,
+            timeLimit!
+          )
+          // @ts-ignore
+          question['body'] = body // still want ability to get body
           return {
-            data: new MultipleChoiceQuestion(
-              text!,
-              body as MultipleChoice,
-              timeLimit!
-            ),
+            data: question,
           }
-        case QuestionFormat.FillInFormat:
-          return { data: new FillInQuestion(text!, body as FillIn, timeLimit!) }
+        }
+        case QuestionFormat.FillInFormat: {
+          // See above
+          const question = new FillInQuestion(text!, body as FillIn, timeLimit!)
+          // @ts-ignore
+          question['body'] = body
+          return { data: question }
+        }
       }
     }),
   }
@@ -63,6 +74,47 @@ describe('Quiz', () => {
     expect(quiz.numQuestions).toBe(quiz.questions.size)
   })
 
+  describe('replaceQuestion', () => {
+    it('should replace current question if types match', () => {
+      const question = randomFillInQuestion()
+      quiz.addQuestion(question)
+      const newQuestion = randomFillInQuestion()
+
+      // Should replace & return old question
+      expect(quiz.replaceQuestion(0, newQuestion)).toEqual(question)
+
+      // Should have a different question now
+      expect(quiz.questionAt(0)!).toEqual(newQuestion)
+    })
+
+    it('should not replace question if types differ', () => {
+      const question = randomFillInQuestion()
+      quiz.addQuestion(question)
+      const newQuestion = randomMultipleChoiceQuestion()
+
+      // Should not replace & return undefined
+      expect(quiz.replaceQuestion(0, newQuestion)).toBeUndefined()
+      // Question should be the same as original
+      expect(quiz.questionAt(0)!).toEqual(question)
+    })
+  })
+
+  describe('removeQuestion', () => {
+    it('should remove question if index in range', () => {
+      quiz.addQuestion(randomFillInQuestion())
+      quiz.addQuestion(randomFillInQuestion())
+
+      const question = quiz.questionAt(1)
+      expect(quiz.removeQuestion(1)).toEqual(question)
+    })
+    it('should not question if index is out of range', () => {
+      quiz.addQuestion(randomFillInQuestion())
+      quiz.addQuestion(randomFillInQuestion())
+
+      expect(quiz.removeQuestion(quiz.numQuestions + 1)).toBeUndefined()
+    })
+  })
+
   describe('advanceToNextQuestion', () => {
     describe('with questions added', () => {
       // Test data
@@ -86,24 +138,40 @@ function randomFillInQuestion(): Question {
   const body: QuestionSubmissionBodyType = {
     type: QuestionFormat.FillInFormat,
     answers: [
-      { text: nanoid(), points: randomInt(50, 100) },
-      { text: nanoid(), points: randomInt(50, 100) },
+      { text: nanoid(), points: getRandomInt(50, 100) },
+      { text: nanoid(), points: getRandomInt(50, 100) },
     ],
   }
 
   const question = fromSubmission({
     text: nanoid(),
     body,
-    timeLimit: randomInt(Question.minTimeLimit, Question.maxTimeLimit),
+    timeLimit: getRandomInt(Question.minTimeLimit, Question.maxTimeLimit),
   })
   return unwrap(question)
 }
 
-function randomInt(min: number, max: number): number {
-  if (max < min) {
-    let t = max
-    max = min
-    min = t
+function randomMultipleChoiceQuestion(): Question {
+  const body: QuestionSubmissionBodyType = {
+    type: QuestionFormat.MultipleChoiceFormat,
+    choices: [
+      { text: nanoid(), points: getRandomInt(50, 100) },
+      { text: nanoid(), points: getRandomInt(50, 100) },
+    ],
+    answer: getRandomInt(0, 1),
   }
-  return Math.max(min, Math.floor(Math.random() * max))
+
+  const question = fromSubmission({
+    text: nanoid(),
+    body,
+    timeLimit: getRandomInt(Question.minTimeLimit, Question.maxTimeLimit),
+  })
+  return unwrap(question)
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+function getRandomInt(min: number, max: number): number {
+  min = Math.ceil(min)
+  max = Math.floor(max)
+  return Math.floor(Math.random() * (max - min + 1) + min)
 }

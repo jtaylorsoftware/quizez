@@ -362,6 +362,51 @@ describe('Server', () => {
         )
       })
 
+      it('should allow session owner to remove questions if question is not current', () => {
+        // Add another test question to remove
+        sessionOwner.emit(
+          SessionEvent.AddQuestion,
+          { session: id, question },
+          () => {
+            // Remove the added question
+            sessionOwner.emit(
+              SessionEvent.RemoveQuestion,
+              { session: id, index: 1 },
+              (res: EventResponse) => {
+                expect(res.status).toBe(ResponseStatus.Success)
+                expect(res.event).toBe(SessionEvent.RemoveQuestion)
+                // @ts-ignore
+                expect(res.data.index).toBe(1)
+              }
+            )
+          }
+        )
+      })
+
+      it('should allow session owner to edit questions if question is not current', () => {
+        // Create a modified question to use as edit
+        const edit = { ...question }
+        edit.text = edit.text + 'Edited'
+
+        sessionOwner.emit(
+          SessionEvent.AddQuestion,
+          { session: id, question },
+          () => {
+            // Submit the edit
+            sessionOwner.emit(
+              SessionEvent.EditQuestion,
+              { session: id, index: 0, question: edit },
+              (res: EventResponse) => {
+                expect(res.status).toBe(ResponseStatus.Success)
+                expect(res.event).toBe(SessionEvent.EditQuestion)
+                // @ts-ignore
+                expect(res.data.index).toBe(1)
+              }
+            )
+          }
+        )
+      })
+
       it('should broadcast next question to all users', (done) => {
         let userReceived = false
         let ownerReceived = false

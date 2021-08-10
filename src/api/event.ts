@@ -85,9 +85,19 @@ export enum SessionEvent {
   NextQuestion = 'next question',
 
   /**
-   * A Session owner is adding a question
+   * A Session owner is adding a question, before the quiz starts.
    */
   AddQuestion = 'add question',
+
+  /**
+   * Session owner is removing a question, before the quiz starts.
+   */
+  RemoveQuestion = 'remove question',
+
+  /**
+   * Session owner is editing a question, before the quiz starts.
+   */
+  EditQuestion = 'edit question',
 
   /**
    * User is responding to a question

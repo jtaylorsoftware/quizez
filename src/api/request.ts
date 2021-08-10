@@ -83,6 +83,35 @@ export interface AddQuestion {
   question: QuestionSubmission
 }
 
+export interface EditQuestion {
+  /**
+   * The id of the session to add to
+   */
+  session: string
+
+  /**
+   * The index of the question being edited
+   */
+  index: number
+
+  /**
+   * The Question to add
+   */
+  question: QuestionSubmission
+}
+
+export interface RemoveQuestion {
+  /**
+   * The id of the session to add to
+   */
+  session: string
+
+  /**
+   * The index of the Question to remove
+   */
+  index: number
+}
+
 export interface QuestionResponse {
   /**
    * The id of the session containing the Question

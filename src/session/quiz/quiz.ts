@@ -30,14 +30,14 @@ export class Quiz {
   }
 
   /**
-   * The current Question, or null if the Quiz has not been advanced to a Question yet
+   * The current Question, or undefined if the Quiz has not been advanced to a Question yet
    */
-  get currentQuestion(): Question | null {
+  get currentQuestion(): Question | undefined {
     if (
       this._currentQuestionIndex < 0 ||
       this._currentQuestionIndex >= this.numQuestions
     ) {
-      return null
+      return undefined
     }
     return this._questions.get(this._currentQuestionIndex)!
   }
@@ -52,11 +52,11 @@ export class Quiz {
 
   /**
    * Advances the Quiz to the next Question.
-   * @returns the next Question or null if no more Questions
+   * @returns the next Question or undefined if no more Questions
    */
-  advanceToNextQuestion(): Question | null {
+  advanceToNextQuestion(): Question | undefined {
     if (this._currentQuestionIndex + 1 >= this.numQuestions) {
-      return null
+      return undefined
     }
     this._currentQuestionIndex += 1
     const question = this._questions.get(this._currentQuestionIndex)!
@@ -71,6 +71,39 @@ export class Quiz {
   addQuestion(question: Question) {
     this._questions = this._questions.push(question)
     question.index = this._questions.size - 1
+  }
+
+  /**
+   * Removes the question at the index
+   * @returns the question removed or undefined if index out of range
+   */
+  removeQuestion(index: number): Question | undefined {
+    if (index < 0 || index >= this.numQuestions) {
+      return undefined
+    }
+    const question = this.questionAt(index)
+    this._questions = this._questions.remove(index)
+    return question
+  }
+
+  /**
+   * Replaces the Question at the given index if their types match.
+   * The new Question is assumed to be validated.
+   * @param index index of question to replace
+   * @param newQuestion question data to substitute
+   * @returns the old Question if types matched and replaced question
+   */
+  replaceQuestion(index: number, newQuestion: Question): Question | undefined {
+    if (index < 0 || index >= this.numQuestions) {
+      return undefined
+    }
+
+    if (newQuestion.body.type !== this.questionAt(index)!.body.type) {
+      return undefined
+    }
+    const question = this.questionAt(index)
+    this._questions = this._questions.set(index, newQuestion)
+    return question
   }
 
   /**

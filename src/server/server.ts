@@ -20,6 +20,10 @@ function configure(io: Server) {
 
     socket.on(SessionEvent.AddQuestion, sessionController.addQuestionToSession(socket))
 
+    socket.on(SessionEvent.EditQuestion, sessionController.editQuestionInSession(socket))
+
+    socket.on(SessionEvent.RemoveQuestion, sessionController.removeQuestionFromSession(socket))
+
     socket.on(SessionEvent.SessionKick, sessionController.removeUserFromSession(socket))
 
     socket.on(SessionEvent.StartSession, sessionController.startSession(socket))

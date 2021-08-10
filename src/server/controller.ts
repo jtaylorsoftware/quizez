@@ -3,11 +3,13 @@ import { ResponseType } from 'api/question'
 import {
   AddQuestion,
   CreateNewSession,
+  EditQuestion,
   EndQuestion,
   EndSession,
   JoinSession,
   NextQuestion,
   QuestionResponse,
+  RemoveQuestion,
   SendHint,
   SessionKick,
   StartSession,
@@ -212,6 +214,7 @@ export class SessionController {
         })
       } else {
         debug(`client owns session ${session.id}`)
+
         if (
           args.question == null ||
           args.question.text == null ||
@@ -242,6 +245,228 @@ export class SessionController {
           const { data: question } = result
 
           session.quiz.addQuestion(question)
+
+          // Use callback to notify session owner of success
+          callback({
+            status: ResponseStatus.Success,
+            event: SessionEvent.AddQuestion,
+            session: session.id,
+            data: null,
+          })
+
+          // Set up the Question's timeout for when it ends
+          question.onTimeout = () => {
+            // End the question
+            question.end()
+
+            // Broadcast to users that question ended
+            this.emit(session.id, {
+              status: ResponseStatus.Success,
+              event: SessionEvent.QuestionEnded,
+              session: session.id,
+              data: {
+                question: question.index,
+              },
+            })
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Removes a question from the Session's quiz
+   * @param socket Client socket owning the Session
+   */
+  removeQuestionFromSession(
+    socket: Socket
+  ): SessionEventHandler<RemoveQuestion> {
+    return (args, callback) => {
+      if (args == null || args instanceof Function) {
+        debug('no args passed to addQuestionToSession')
+        args?.({
+          status: ResponseStatus.Failure,
+          event: SessionEvent.RemoveQuestion,
+          session: null,
+          errors: null,
+        })
+        return
+      }
+      if (callback == null || !(callback instanceof Function)) {
+        debug('callback was null or not a function')
+        return
+      }
+
+      const session = this.sessions.get(args.session ?? '')
+      if (session == null || session.owner !== socket.id) {
+        debug(`client ${socket.id} was not owner of any session`)
+        callback({
+          status: ResponseStatus.Failure,
+          event: SessionEvent.RemoveQuestion,
+          session: session == null ? null : session.id,
+          errors: [
+            { field: 'session', value: session == null ? null : session.id },
+          ],
+        })
+      } else {
+        debug(`client owns session ${session.id}`)
+
+        if (args.index == null) {
+          debug('index was null')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.RemoveQuestion,
+            session: session.id,
+            errors: [{ field: 'index', value: null }],
+          })
+          return
+        }
+
+        if (
+          session.isStarted &&
+          session.quiz.currentQuestionIndex === args.index
+        ) {
+          debug('cannot remove current question')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.RemoveQuestion,
+            session: session.id,
+            errors: [{ field: 'index', value: args.index }],
+          })
+          return
+        }
+
+        if (session.quiz.removeQuestion(args.index) == null) {
+          debug('could not remove question')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.RemoveQuestion,
+            session: session.id,
+            errors: [{ field: 'index', value: args.index }],
+          })
+          return
+        }
+
+        debug('question removed')
+
+        // Use callback to notify session owner of success
+        callback({
+          status: ResponseStatus.Success,
+          event: SessionEvent.RemoveQuestion,
+          session: session.id,
+          data: {
+            index: args.index,
+          },
+        })
+      }
+    }
+  }
+
+  /**
+   * Edits a question in the Session's quiz
+   * @param socket Client socket owning the Session
+   */
+  editQuestionInSession(socket: Socket): SessionEventHandler<EditQuestion> {
+    return (args, callback) => {
+      if (args == null || args instanceof Function) {
+        debug('no args passed to addQuestionToSession')
+        args?.({
+          status: ResponseStatus.Failure,
+          event: SessionEvent.EditQuestion,
+          session: null,
+          errors: null,
+        })
+        return
+      }
+      if (callback == null || !(callback instanceof Function)) {
+        debug('callback was null or not a function')
+        return
+      }
+
+      const session = this.sessions.get(args.session ?? '')
+      if (session == null || session.owner !== socket.id) {
+        debug(`client ${socket.id} was not owner of any session`)
+        callback({
+          status: ResponseStatus.Failure,
+          event: SessionEvent.EditQuestion,
+          session: session == null ? null : session.id,
+          errors: [
+            { field: 'session', value: session == null ? null : session.id },
+          ],
+        })
+      } else {
+        debug(`client owns session ${session.id}`)
+        if (
+          args.question == null ||
+          args.question.text == null ||
+          args.question.body == null ||
+          args.question.timeLimit == null
+        ) {
+          debug('question was missing or missing fields')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.EditQuestion,
+            session: session.id,
+            errors: [{ field: 'question', value: null }],
+          })
+          return
+        }
+
+        if (
+          args.index == null ||
+          args.index < 0 ||
+          args.index >= session.quiz.numQuestions
+        ) {
+          debug('index was null or out of range')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.EditQuestion,
+            session: session.id,
+            errors: [
+              { field: 'index', value: args.index == null ? null : args.index },
+            ],
+          })
+          return
+        }
+
+        if (
+          session.isStarted &&
+          session.quiz.currentQuestionIndex === args.index
+        ) {
+          debug('cannot edit current question')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.EditQuestion,
+            session: session.id,
+            errors: [{ field: 'index', value: args.index }],
+          })
+          return
+        }
+
+        const result = fromSubmission(args.question)
+        if (result.type === Result.Failure) {
+          debug('question has invalid format')
+          callback({
+            status: ResponseStatus.Failure,
+            event: SessionEvent.EditQuestion,
+            session: session.id,
+            errors: result.errors,
+          })
+        } else {
+          const { data: question } = result
+
+          if (session.quiz.replaceQuestion(args.index, question) == null) {
+            debug('could not edit question')
+            callback({
+              status: ResponseStatus.Failure,
+              event: SessionEvent.EditQuestion,
+              session: session.id,
+              errors: [{ field: 'type', value: question.body.type }],
+            })
+            return
+          }
+
+          debug('question edited')
 
           // Use callback to notify session owner of success
           callback({

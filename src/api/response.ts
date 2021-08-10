@@ -61,6 +61,8 @@ export type SuccessResponse =
   | FeedbackSubmitted
   | SendHintSuccess
   | HintReceived
+  | RemoveQuestionSuccess
+  | EditQuestionSuccess
 
 export interface CreateSessionSuccess {
   status: ResponseStatus.Success
@@ -162,6 +164,30 @@ export interface AddQuestionSuccess {
   session: string
   event: SessionEvent.AddQuestion
   data: null
+}
+
+export interface EditQuestionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.EditQuestion
+  data: {
+    /**
+     * The index edited
+     */
+    index: number
+  }
+}
+
+export interface RemoveQuestionSuccess {
+  status: ResponseStatus.Success
+  session: string
+  event: SessionEvent.RemoveQuestion
+  data: {
+    /**
+     * The index removed
+     */
+    index: number
+  }
 }
 
 export interface QuestionResponseSuccess {
